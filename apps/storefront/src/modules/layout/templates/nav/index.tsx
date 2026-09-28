@@ -1,0 +1,130 @@
+import { Suspense } from "react"
+
+import { listLocales } from "@lib/data/locales"
+import { getLocale } from "@lib/data/locale-actions"
+import { listRegions } from "@lib/data/regions"
+import { HttpTypes } from "@medusajs/types"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import CartButton from "@modules/layout/components/cart-button"
+import NavSearch from "@modules/layout/components/nav-search"
+import SideMenu from "@modules/layout/components/side-menu"
+import WishlistLink from "@modules/layout/components/wishlist-link"
+
+const navigationItems = [
+  ["Парфюми", "/parfyumi"],
+  ["Отливки", "/otlivki"],
+  ["Дизайнерски къщи", "/dizaynerski-kashti"],
+  ["Парфюмни нотки", "/parfyumni-notki"],
+]
+
+export default async function Nav({
+  customer,
+}: {
+  customer: HttpTypes.StoreCustomer | null
+}) {
+  const [regions, locales, currentLocale] = await Promise.all([
+    listRegions().then((regions: HttpTypes.StoreRegion[]) => regions),
+    listLocales(),
+    getLocale(),
+  ])
+
+  return (
+    <div className="sticky inset-x-0 top-0 z-50">
+      <div className="bg-[#28231f] px-4 py-2 text-center text-[9px] font-semibold uppercase tracking-[0.22em] text-[#eee5dc]">
+        Безплатна доставка за поръчки над 150 €
+      </div>
+
+      <header className="border-b border-[#ded7cf]">
+        <div className="bg-[#e5d8cc]">
+          <div className="content-container">
+          <div className="flex min-h-[72px] items-center gap-4 small:grid small:grid-cols-[190px_minmax(300px,560px)_300px] small:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="h-[72px] small:hidden">
+                <SideMenu
+                  regions={regions}
+                  locales={locales}
+                  currentLocale={currentLocale}
+                />
+              </div>
+              <LocalizedClientLink
+                href="/"
+                className="min-w-0 text-[#211d19]"
+                data-testid="nav-store-link"
+              >
+                <span className="font-display block truncate text-lg tracking-[0.17em] small:text-xl small:tracking-[0.2em]">
+                  PARFUMERIE
+                </span>
+                <span className="mt-0.5 hidden text-[7px] uppercase tracking-[0.34em] text-[#867568] small:block">
+                  Selected scents
+                </span>
+              </LocalizedClientLink>
+            </div>
+
+            <div className="hidden small:block">
+              <NavSearch />
+            </div>
+
+            <div className="ml-auto flex items-center justify-end gap-3 text-xs text-[#51483f] small:ml-0 medium:gap-6">
+              <WishlistLink />
+              <Suspense
+                fallback={
+                  <LocalizedClientLink href="/cart" data-testid="nav-cart-link">
+                    Кошница (0)
+                  </LocalizedClientLink>
+                }
+              >
+                <CartButton />
+              </Suspense>
+              <LocalizedClientLink
+                className="inline-flex h-10 items-center gap-2 rounded-full px-2 transition hover:bg-[#eee8df] small:px-3"
+                href="/account"
+                data-testid="nav-account-link"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-[18px] w-[18px]"
+                >
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" />
+                </svg>
+                <span className="hidden xsmall:inline">
+                  {customer ? "Профил" : "Вход"}
+                </span>
+              </LocalizedClientLink>
+            </div>
+          </div>
+
+            <div className="pb-3 small:hidden">
+              <NavSearch />
+            </div>
+          </div>
+        </div>
+
+        <div className="relative h-px bg-[#9c846f]" aria-hidden="true">
+          <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-[#9c846f] bg-[#e5d8cc]" />
+        </div>
+
+        <nav
+          aria-label="Основна навигация"
+          className="hidden bg-[#fffdf9] small:block"
+        >
+          <div className="content-container flex h-12 items-center justify-center gap-12 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#51483f]">
+            {navigationItems.map(([label, href]) => (
+              <LocalizedClientLink
+                key={label}
+                href={href}
+                className="flex h-full items-center border-b-2 border-transparent pt-0.5 transition hover:border-[#8d735f] hover:text-black"
+              >
+                {label}
+              </LocalizedClientLink>
+            ))}
+          </div>
+        </nav>
+      </header>
+    </div>
+  )
+}

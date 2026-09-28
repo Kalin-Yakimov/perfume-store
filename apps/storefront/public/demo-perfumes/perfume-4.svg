@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dedbd4"/><stop offset="1" stop-color="#756d62"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#746d64"/><stop offset="1" stop-color="#171513"/></linearGradient></defs>
+  <rect width="600" height="800" fill="url(#bg)"/><circle cx="120" cy="160" r="160" fill="#fff" opacity=".13"/><ellipse cx="300" cy="670" rx="170" ry="34" fill="#171513" opacity=".3"/>
+  <rect x="232" y="145" width="136" height="88" rx="5" fill="#141311"/><rect x="210" y="220" width="180" height="38" rx="5" fill="#8f816f"/><rect x="150" y="246" width="300" height="390" rx="24" fill="url(#glass)" stroke="#fff" stroke-opacity=".35" stroke-width="4"/>
+  <rect x="185" y="400" width="230" height="112" fill="#e9e2d8" opacity=".88"/><text x="300" y="450" text-anchor="middle" font-family="Georgia,serif" font-size="30" letter-spacing="7" fill="#27231f">DEMO</text><text x="300" y="482" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" letter-spacing="5" fill="#665d53">EAU DE PARFUM</text>
+</svg>

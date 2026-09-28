@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f0e1d2"/><stop offset="1" stop-color="#c89b75"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#a96534" stop-opacity=".78"/></linearGradient></defs>
+  <rect width="600" height="800" fill="url(#bg)"/><circle cx="470" cy="150" r="170" fill="#fff" opacity=".17"/><ellipse cx="300" cy="670" rx="170" ry="34" fill="#5e3d27" opacity=".2"/>
+  <rect x="232" y="150" width="136" height="82" rx="12" fill="#2b2521"/><rect x="210" y="220" width="180" height="36" rx="6" fill="#b89a81"/><rect x="145" y="245" width="310" height="390" rx="64" fill="url(#glass)" stroke="#fff" stroke-opacity=".7" stroke-width="5"/>
+  <rect x="185" y="400" width="230" height="112" fill="#f8f1e8" opacity=".82"/><text x="300" y="450" text-anchor="middle" font-family="Georgia,serif" font-size="30" letter-spacing="7" fill="#3d3027">DEMO</text><text x="300" y="482" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" letter-spacing="5" fill="#735a47">EAU DE PARFUM</text>
+</svg>
