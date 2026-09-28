@@ -93,12 +93,40 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
+  const title = formatProductTitle(
+    product.title,
+    product.metadata?.listing_type === "decant",
+  )
+  const brand =
+    typeof product.metadata?.brand === "string"
+      ? product.metadata.brand
+      : typeof product.metadata?.designer === "string"
+        ? product.metadata.designer
+        : undefined
+  const fullDescription =
+    product.description?.replace(/\s+/g, " ").trim() ||
+    [brand, title, "Разгледайте подробности и налични разфасовки."]
+      .filter(Boolean)
+      .join(" · ")
+  const description =
+    fullDescription.length > 160
+      ? `${fullDescription.slice(0, 157).trimEnd()}...`
+      : fullDescription
+
   return {
-    title: `${formatProductTitle(product.title, product.metadata?.listing_type === "decant")} | Parfumerie`,
-    description: formatProductTitle(product.title, product.metadata?.listing_type === "decant"),
+    title,
+    description,
+    alternates: { canonical: `/products/${product.handle}` },
     openGraph: {
-      title: `${formatProductTitle(product.title, product.metadata?.listing_type === "decant")} | Parfumerie`,
-      description: formatProductTitle(product.title, product.metadata?.listing_type === "decant"),
+      type: "website",
+      title: `${title} | Parfumerie`,
+      description,
+      images: product.thumbnail ? [product.thumbnail] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Parfumerie`,
+      description,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }

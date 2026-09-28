@@ -3,6 +3,7 @@ import { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Помощ",
   description: "Информация за доставка, плащане, връщане и контакт.",
+  robots: { index: false, follow: false },
 }
 
 const helpSections = [

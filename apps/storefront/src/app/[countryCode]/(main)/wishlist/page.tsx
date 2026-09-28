@@ -5,6 +5,7 @@ import WishlistContent from "@modules/wishlist/components/wishlist-content"
 export const metadata: Metadata = {
   title: "Любими",
   description: "Запазени любими парфюми.",
+  robots: { index: false, follow: false },
 }
 
 export default function WishlistPage() {

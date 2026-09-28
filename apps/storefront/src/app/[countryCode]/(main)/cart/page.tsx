@@ -7,6 +7,7 @@ import { notFound } from "next/navigation"
 export const metadata: Metadata = {
   title: "Кошница",
   description: "Прегледайте избраните от вас парфюми и отливки.",
+  robots: { index: false, follow: false },
 }
 
 export default async function Cart() {

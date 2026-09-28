@@ -8,6 +8,7 @@ import StoreTemplate from "@modules/store/templates"
 export const metadata: Metadata = {
   title: "Парфюмни отливки",
   description: "Парфюмни отливки в разфасовки от 5 мл и 10 мл.",
+  alternates: { canonical: "/otlivki" },
 }
 
 type PageSearchParams = Record<string, string | string[] | undefined> & {

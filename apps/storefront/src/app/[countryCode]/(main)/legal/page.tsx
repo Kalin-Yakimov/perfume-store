@@ -3,6 +3,7 @@ import { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Правна информация",
   description: "Общи условия, поверителност и информация за бисквитките.",
+  robots: { index: false, follow: false },
 }
 
 export default function LegalPage() {

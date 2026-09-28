@@ -9,6 +9,14 @@ const requiredEnvs = [
   },
 ];
 
+if (process.env.NODE_ENV === "production") {
+  requiredEnvs.push({
+    key: "NEXT_PUBLIC_BASE_URL",
+    description:
+      "Set this to the canonical public HTTPS URL of the storefront.",
+  });
+}
+
 function checkEnvVariables() {
   const missingEnvs = requiredEnvs.filter(function (env) {
     c;

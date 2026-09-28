@@ -27,6 +27,7 @@ export async function generateMetadata({
     description: note
       ? `Разгледайте всички налични парфюми с нотка ${note.name}.`
       : "Разгледайте ароматите според техните парфюмни нотки.",
+    alternates: { canonical: `/parfyumni-notki/${handle}` },
   }
 }
 

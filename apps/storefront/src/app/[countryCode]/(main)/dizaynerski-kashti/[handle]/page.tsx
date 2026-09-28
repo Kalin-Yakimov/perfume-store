@@ -27,6 +27,7 @@ export async function generateMetadata({
     description: designer
       ? `Разгледайте всички налични парфюми от ${designer.name}.`
       : "Разгледайте парфюмите от избраната парфюмна къща.",
+    alternates: { canonical: `/dizaynerski-kashti/${handle}` },
   }
 }
 
