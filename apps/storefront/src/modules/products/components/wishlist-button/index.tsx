@@ -5,7 +5,6 @@ import {
   toggleWishlistItem,
   syncWishlistItem,
   WishlistItem,
-  WISHLIST_STORAGE_KEY,
   WISHLIST_UPDATED_EVENT,
 } from "@lib/util/wishlist"
 import { useEffect, useState } from "react"

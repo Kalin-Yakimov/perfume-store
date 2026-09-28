@@ -1,7 +1,10 @@
 import type { MedusaContainer } from "@medusajs/framework";
 import { MedusaError, Modules } from "@medusajs/framework/utils";
 
-import { packDecants } from "./packing";
+import {
+  canPackCartDecants,
+  maxAdditionalDecantsForSnapshot,
+} from "./cart-planning";
 import { readDecantRequests, readStockSnapshot } from "./stock";
 
 export type PreviewCartItem = {
@@ -56,38 +59,16 @@ export async function canFulfillCartDecants(
 
   const requests = await readDecantRequests(container, resolvedItems);
 
-  for (const request of requests) {
-    const snapshot = await readStockSnapshot(
-      container,
-      request,
-      salesChannelId,
-    );
-    const slots = snapshot.sealedSlots.map((slot) => ({ ...slot }));
-    let wholeBottles = resolvedItems.reduce(
-      (total, item) =>
-        total +
-        (item.variant_id === request.sourceVariantId
-          ? Number(item.quantity || 0)
-          : 0),
-      0,
-    );
+  const snapshots = new Map(
+    await Promise.all(
+      requests.map(async (request) => [
+        request.sourceProductId,
+        await readStockSnapshot(container, request, salesChannelId),
+      ] as const),
+    ),
+  )
 
-    // Whole bottles already in this cart also need the same sealed stock.
-    for (const slot of slots) {
-      const taken = Math.min(wholeBottles, slot.availableUnits);
-      slot.availableUnits -= taken;
-      wholeBottles -= taken;
-    }
-
-    if (
-      wholeBottles > 0 ||
-      !packDecants(request.units, snapshot.bottles, slots, snapshot.usableMl)
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return canPackCartDecants(resolvedItems, requests, snapshots)
 }
 
 /** Maximum extra vials of one variant that fit alongside the current cart. */
@@ -114,8 +95,6 @@ export async function maxAdditionalDecantQuantity(
   if (!request) return 0;
 
   // The candidate is appended last, after all existing vials of this perfume.
-  const candidateUnit = request.units.at(-1)!;
-  const existingUnits = request.units.slice(0, -1);
   const snapshot = await readStockSnapshot(container, request, salesChannelId);
   const slots = snapshot.sealedSlots.map((slot) => ({ ...slot }));
   let wholeBottles = resolvedItems.reduce(
@@ -138,34 +117,14 @@ export async function maxAdditionalDecantQuantity(
       total + (item.variant_id === variantId ? Number(item.quantity || 0) : 0),
     0,
   );
-  const availableMl =
-    snapshot.bottles.reduce(
-      (sum, bottle) => sum + Math.max(0, bottle.freeMl),
-      0,
-    ) +
-    slots.reduce(
-      (sum, slot) => sum + slot.availableUnits * snapshot.usableMl,
-      0,
-    );
-  let low = 0;
-  let high = Math.max(
-    0,
-    Math.min(
-      500 - alreadyInCart,
-      Math.floor(availableMl / candidateUnit.volumeMl),
-    ),
-  );
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    const units = [
-      ...existingUnits,
-      ...Array.from({ length: middle }, () => candidateUnit),
-    ];
-    if (packDecants(units, snapshot.bottles, slots, snapshot.usableMl)) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return low;
+  const candidateUnit = request.units.at(-1)!
+  return maxAdditionalDecantsForSnapshot({
+    existingUnits: request.units.slice(0, -1),
+    variantId,
+    candidateVolumeMl: candidateUnit.volumeMl,
+    alreadyInCart,
+    bottles: snapshot.bottles,
+    sealedSlots: slots,
+    usableMl: snapshot.usableMl,
+  })
 }

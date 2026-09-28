@@ -1,5 +1,5 @@
 import { getProductPrice } from "@lib/util/get-product-price"
-import { formatProductTitle, formatVolumeForDisplay } from "@lib/util/format-volume-for-display"
+import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import WishlistButton from "@modules/products/components/wishlist-button"

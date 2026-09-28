@@ -4,6 +4,7 @@ import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/frame
 
 import { DECANT_RESERVE_ML, DECANT_STOCK_MODULE } from "../modules/decant-stock"
 import DecantStockModuleService from "../modules/decant-stock/service"
+import { groupDecantAllocationsByBottle } from "./decant-order-allocation"
 
 type PrepareDecantOrderInput = { order_id: string }
 
@@ -219,7 +220,12 @@ const prepareDecantOrderStep = createStep(
           bottleIdsByPlan.set(plan.id, openedBottleId)
         }
 
-        const vialsByBottle = new Map<string, { volume: number; allocationIds: string[] }>()
+        const resolvedAllocations: {
+          id: string
+          bottle_id: string
+          bottle_kind: string
+          volume_ml: number
+        }[] = []
         for (const allocation of allocations) {
           const bottleId = allocation.bottle_kind === "planned"
             ? bottleIdsByPlan.get(allocation.bottle_id)
@@ -227,16 +233,21 @@ const prepareDecantOrderStep = createStep(
           if (!bottleId) {
             throw invalid("Липсва бутилка за една от отливките.")
           }
-          const group = vialsByBottle.get(bottleId) || { volume: 0, allocationIds: [] }
-          if (!Number.isFinite(allocation.volume_ml) || allocation.volume_ml <= 0) {
-            throw invalid("Поръчката съдържа отливка с невалиден обем.")
-          }
-          group.volume = roundMl(group.volume + allocation.volume_ml)
-          group.allocationIds.push(allocation.id)
-          vialsByBottle.set(bottleId, group)
+          resolvedAllocations.push({
+            id: allocation.id,
+            bottle_id: bottleId,
+            bottle_kind: "open",
+            volume_ml: allocation.volume_ml,
+          })
         }
 
-        for (const [bottleId, group] of vialsByBottle) {
+        const vialsByBottle = groupDecantAllocationsByBottle(resolvedAllocations)
+        if (!vialsByBottle) {
+          throw invalid("Поръчката съдържа отливка с невалиден обем.")
+        }
+
+        for (const group of vialsByBottle) {
+          const bottleId = group.bottle_id
           const existingAdjustments = await decantStock.listDecantAdjustments({
             bottle_id: bottleId,
             order_id,
@@ -248,7 +259,7 @@ const prepareDecantOrderStep = createStep(
           if (!bottle) {
             throw invalid("Липсва отворената бутилка за отливка от поръчката.")
           }
-          const remainingMl = roundMl(bottle.remaining_ml - group.volume)
+          const remainingMl = roundMl(bottle.remaining_ml - group.volume_ml)
           if (remainingMl < 0) {
             throw invalid("Недостатъчен остатък в заделената бутилка.")
           }
@@ -257,7 +268,7 @@ const prepareDecantOrderStep = createStep(
             bottle_id: bottleId,
             status: "reserved",
           })
-          const currentAllocationIds = new Set(group.allocationIds)
+          const currentAllocationIds = new Set(group.allocation_ids)
           const otherReservedMl = roundMl(otherReservations.reduce(
             (total, allocation) =>
               total + (currentAllocationIds.has(allocation.id) ? 0 : allocation.volume_ml),
@@ -282,13 +293,13 @@ const prepareDecantOrderStep = createStep(
           const adjustment = await decantStock.createDecantAdjustments({
             bottle_id: bottleId,
             order_id,
-            change_ml: -group.volume,
+            change_ml: -group.volume_ml,
             reason: "sale",
             note: `Приготвена поръчка ${order_id}`,
           })
           undo.push(() => decantStock.deleteDecantAdjustments(adjustment.id))
 
-          for (const allocationId of group.allocationIds) {
+          for (const allocationId of group.allocation_ids) {
             await decantStock.updateDecantAllocations({ id: allocationId, status: "prepared" })
             undo.push(() => decantStock.updateDecantAllocations({ id: allocationId, status: "reserved" }))
           }

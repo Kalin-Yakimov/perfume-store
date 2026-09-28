@@ -63,6 +63,9 @@ export const listProducts = async ({
 
   const next = {
     ...(await getCacheOptions("products")),
+    // Admin changes happen in Medusa, outside this Next.js process, so a
+    // tag-only cache could otherwise retain old prices or inventory forever.
+    revalidate: 60,
   }
 
   return sdk.client
