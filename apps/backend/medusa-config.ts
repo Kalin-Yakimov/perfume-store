@@ -86,7 +86,7 @@ module.exports = defineConfig({
               port: Number(process.env.SMTP_PORT || 465),
               secure: process.env.SMTP_SECURE !== "false",
               user: process.env.SMTP_USER || "icrosoft@abv.bg",
-              pass: process.env.SMTP_PASS || "",
+              pass: process.env.SMTP_PASS?.trim() || "",
               from: process.env.SMTP_FROM_EMAIL || "icrosoft@abv.bg",
             },
           },

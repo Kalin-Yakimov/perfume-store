@@ -26,7 +26,7 @@ npm run test:unit
 
 ## Настройки и тайни
 
-Локалните настройки се пазят в `apps/backend/.env` и `apps/storefront/.env.local`. Не добавяйте тези файлове, пароли или API ключове в Git. `apps/backend/.env.template` е само пример; попълвайте SMTP паролата локално. В production `STOREFRONT_URL` трябва да бъде публичният HTTPS адрес на магазина.
+Локалните настройки се пазят в `apps/backend/.env` и `apps/storefront/.env.local`. Не добавяйте тези файлове, пароли или API ключове в Git. `apps/backend/.env.template` е само пример; `SMTP_PASS` трябва да е попълнена локално, защото backend-ът вече изисква SMTP при стартиране и не симулира изпращане. В production `STOREFRONT_URL` трябва да бъде публичният HTTPS адрес на магазина.
 
 ## Проверки и текущи ограничения
 

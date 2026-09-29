@@ -60,35 +60,29 @@ export default class AbvSmtpNotificationService extends AbstractNotificationProv
 
   protected logger_: Logger
   protected options_: ProviderOptions
-  protected transporter_: Transporter | null
+  protected transporter_: Transporter
 
   constructor({ logger }: InjectedDependencies, options: ProviderOptions) {
     super()
     this.logger_ = logger
     this.options_ = options
 
-    if (options.pass) {
-      this.transporter_ = nodemailer.createTransport({
-        host: options.host,
-        port: options.port,
-        secure: options.secure,
-        auth: {
-          user: options.user,
-          pass: options.pass,
-        },
-      })
-    } else {
-      this.transporter_ = null
-      if (process.env.NODE_ENV === "production") {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          "SMTP_PASS must be configured before running in production."
-        )
-      }
-      this.logger_.warn(
-        "ABV SMTP credentials are not configured. Account emails will be logged for local development only."
+    if (!options.pass?.trim()) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "SMTP_PASS must be configured before starting the backend."
       )
     }
+
+    this.transporter_ = nodemailer.createTransport({
+      host: options.host,
+      port: options.port,
+      secure: options.secure,
+      auth: {
+        user: options.user,
+        pass: options.pass,
+      },
+    })
   }
 
   async send(
@@ -128,13 +122,6 @@ export default class AbvSmtpNotificationService extends AbstractNotificationProv
     }
 
     const text = `${title}\n\n${message}\n\n${action}: ${link}\n\nАко не сте заявили това действие, можете да игнорирате имейла.`
-
-    if (!this.transporter_) {
-      this.logger_.info(
-        `[Local email preview] Subject: ${subject}. Message link omitted to keep one-time tokens out of logs.`
-      )
-      return {}
-    }
 
     try {
       const result = await this.transporter_.sendMail({
