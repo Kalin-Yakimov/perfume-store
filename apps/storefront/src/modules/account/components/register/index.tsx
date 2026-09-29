@@ -32,7 +32,8 @@ const Register = ({ setCurrentView }: Props) => {
           data-testid="register-verification-message"
         >
           Изпратихме линк за потвърждение на <strong>{message.email}</strong>.
-          Проверете пощата си, за да потвърдите имейла и да влезете.
+          Отворете го от този браузър, за да влезете автоматично след
+          потвърждението. Ако не го виждате, проверете папка „Спам“.
         </div>
       )}
       <form

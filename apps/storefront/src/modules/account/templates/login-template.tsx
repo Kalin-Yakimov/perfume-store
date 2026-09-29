@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import Register from "@modules/account/components/register"
 import Login from "@modules/account/components/login"
@@ -12,6 +12,14 @@ export enum LOGIN_VIEW {
 
 const LoginTemplate = () => {
   const [currentView, setCurrentView] = useState("sign-in")
+
+  useEffect(() => {
+    if (
+      new URLSearchParams(window.location.search).get("view") === "register"
+    ) {
+      setCurrentView(LOGIN_VIEW.REGISTER)
+    }
+  }, [])
 
   return (
     <div className="flex flex-1 flex-col bg-[#fbf9f6]">

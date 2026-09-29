@@ -5,6 +5,7 @@ import { getLocale } from "@lib/data/locale-actions"
 import { listRegions } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import AccountMenu from "@modules/layout/components/account-menu"
 import CartButton from "@modules/layout/components/cart-button"
 import NavSearch from "@modules/layout/components/nav-search"
 import SideMenu from "@modules/layout/components/side-menu"
@@ -37,66 +38,50 @@ export default async function Nav({
       <header className="border-b border-[#ded7cf]">
         <div className="bg-[#e5d8cc]">
           <div className="content-container">
-          <div className="flex min-h-[72px] items-center gap-4 small:grid small:grid-cols-[190px_minmax(300px,560px)_300px] small:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="h-[72px] small:hidden">
-                <SideMenu
-                  regions={regions}
-                  locales={locales}
-                  currentLocale={currentLocale}
-                />
-              </div>
-              <LocalizedClientLink
-                href="/"
-                className="min-w-0 text-[#211d19]"
-                data-testid="nav-store-link"
-              >
-                <span className="font-display block truncate text-lg tracking-[0.17em] small:text-xl small:tracking-[0.2em]">
-                  PARFUMERIE
-                </span>
-                <span className="mt-0.5 hidden text-[7px] uppercase tracking-[0.34em] text-[#867568] small:block">
-                  Selected scents
-                </span>
-              </LocalizedClientLink>
-            </div>
-
-            <div className="hidden small:block">
-              <NavSearch />
-            </div>
-
-            <div className="ml-auto flex items-center justify-end gap-3 text-xs text-[#51483f] small:ml-0 medium:gap-6">
-              <WishlistLink />
-              <Suspense
-                fallback={
-                  <LocalizedClientLink href="/cart" data-testid="nav-cart-link">
-                    Кошница (0)
-                  </LocalizedClientLink>
-                }
-              >
-                <CartButton />
-              </Suspense>
-              <LocalizedClientLink
-                className="inline-flex h-10 items-center gap-2 rounded-full px-2 transition hover:bg-[#eee8df] small:px-3"
-                href="/account"
-                data-testid="nav-account-link"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  className="h-[18px] w-[18px]"
+            <div className="flex min-h-[72px] items-center gap-4 small:grid small:grid-cols-[190px_minmax(300px,560px)_300px] small:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="h-[72px] small:hidden">
+                  <SideMenu
+                    regions={regions}
+                    locales={locales}
+                    currentLocale={currentLocale}
+                  />
+                </div>
+                <LocalizedClientLink
+                  href="/"
+                  className="min-w-0 text-[#211d19]"
+                  data-testid="nav-store-link"
                 >
-                  <circle cx="12" cy="8" r="3.5" />
-                  <path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" />
-                </svg>
-                <span className="hidden xsmall:inline">
-                  {customer ? "Профил" : "Вход"}
-                </span>
-              </LocalizedClientLink>
+                  <span className="font-display block truncate text-lg tracking-[0.17em] small:text-xl small:tracking-[0.2em]">
+                    PARFUMERIE
+                  </span>
+                  <span className="mt-0.5 hidden text-[7px] uppercase tracking-[0.34em] text-[#867568] small:block">
+                    Selected scents
+                  </span>
+                </LocalizedClientLink>
+              </div>
+
+              <div className="hidden small:block">
+                <NavSearch />
+              </div>
+
+              <div className="ml-auto flex items-center justify-end gap-3 text-xs text-[#51483f] small:ml-0 medium:gap-6">
+                <WishlistLink />
+                <Suspense
+                  fallback={
+                    <LocalizedClientLink
+                      href="/cart"
+                      data-testid="nav-cart-link"
+                    >
+                      Кошница (0)
+                    </LocalizedClientLink>
+                  }
+                >
+                  <CartButton />
+                </Suspense>
+                <AccountMenu customer={customer} />
+              </div>
             </div>
-          </div>
 
             <div className="pb-3 small:hidden">
               <NavSearch />

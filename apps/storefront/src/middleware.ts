@@ -135,12 +135,18 @@ export async function middleware(request: NextRequest) {
     cart: "koshnitsa",
     account: "vhod",
     checkout: "zavarshvane-na-porachka",
+    "verify-account": "potvardi-profil",
+    "forgot-password": "zabravena-parola",
+    "reset-password": "nova-parola",
   }
   const publicPathAliases: Record<string, string> = {
     lyubimi: "wishlist",
     koshnitsa: "cart",
     vhod: "account",
     "zavarshvane-na-porachka": "checkout",
+    "potvardi-profil": "verify-account",
+    "zabravena-parola": "forgot-password",
+    "nova-parola": "reset-password",
   }
   const accountSubpathAliases: Record<string, string> = {
     profil: "profile",

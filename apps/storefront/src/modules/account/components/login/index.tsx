@@ -4,6 +4,7 @@ import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
 import { useActionState } from "react"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
@@ -29,7 +30,8 @@ const Login = ({ setCurrentView }: Props) => {
           data-testid="login-verification-message"
         >
           Изпратихме линк за потвърждение на <strong>{message.email}</strong>.
-          Потвърдете имейла си и след това влезте.
+          Отворете го от този браузър, за да влезете автоматично след
+          потвърждението. Ако не го виждате, проверете папка „Спам“.
         </div>
       )}
       <form
@@ -68,6 +70,14 @@ const Login = ({ setCurrentView }: Props) => {
           Вход
         </SubmitButton>
       </form>
+      <div className="mt-4 text-center text-sm">
+        <LocalizedClientLink
+          href="/zabravena-parola"
+          className="text-[#211d19] underline decoration-[#bda894] underline-offset-4 hover:decoration-[#211d19]"
+        >
+          Забравена парола?
+        </LocalizedClientLink>
+      </div>
       <span className="mt-6 block border-t border-[#ded7cf] pt-6 text-center text-sm text-[#71665c]">
         Нямате профил?{" "}
         <button

@@ -6,7 +6,8 @@ import { Button } from "@modules/common/components/ui"
 import { confirmEmailVerification } from "@lib/data/customer"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
-type VerificationState = "verifying" | "success" | "error"
+type VerificationState =
+  "verifying" | "success_signed_in" | "success_sign_in_required" | "error"
 
 const VerifyAccount = () => {
   const searchParams = useSearchParams()
@@ -27,9 +28,15 @@ const VerifyAccount = () => {
       return
     }
 
-    confirmEmailVerification(token).then(({ success }) =>
-      setState(success ? "success" : "error")
-    )
+    confirmEmailVerification(token).then(({ success, signedIn }) => {
+      setState(
+        success
+          ? signedIn
+            ? "success_signed_in"
+            : "success_sign_in_required"
+          : "error",
+      )
+    })
   }, [token])
 
   return (
@@ -37,21 +44,35 @@ const VerifyAccount = () => {
       className="max-w-sm w-full flex flex-col items-center text-center gap-y-4"
       data-testid="verify-account-page"
     >
-      <h1 className="text-large-semi uppercase">Email verification</h1>
+      <h1 className="font-display text-3xl text-[#211d19]">
+        Потвърждение на имейл
+      </h1>
 
       {state === "verifying" && (
         <p className="text-base-regular text-ui-fg-base">
-          Verifying your email...
+          Проверяваме имейла ви…
         </p>
       )}
 
-      {state === "success" && (
+      {state === "success_signed_in" && (
         <>
           <p className="text-base-regular text-ui-fg-base">
-            Your email is verified. You can now sign in to your account.
+            Имейлът е потвърден и вече сте в профила си.
           </p>
           <LocalizedClientLink href="/account">
-            <Button variant="primary">Go to sign in</Button>
+            <Button variant="primary">Към профила</Button>
+          </LocalizedClientLink>
+        </>
+      )}
+
+      {state === "success_sign_in_required" && (
+        <>
+          <p className="text-base-regular text-ui-fg-base">
+            Имейлът е потвърден. Отворихте линка от друго устройство или сесията
+            е изтекла — влезте в профила си, за да продължите.
+          </p>
+          <LocalizedClientLink href="/account">
+            <Button variant="primary">Вход в профила</Button>
           </LocalizedClientLink>
         </>
       )}
@@ -59,11 +80,11 @@ const VerifyAccount = () => {
       {state === "error" && (
         <>
           <p className="text-base-regular text-ui-fg-base">
-            This verification link is invalid or has expired. Sign in to receive
-            a new verification email.
+            Линкът за потвърждение е невалиден или е изтекъл. Влезте отново, за
+            да получите нов линк.
           </p>
-          <LocalizedClientLink href="/account">
-            <Button variant="secondary">Go to sign in</Button>
+          <LocalizedClientLink href="/vhod">
+            <Button variant="secondary">Към вход</Button>
           </LocalizedClientLink>
         </>
       )}

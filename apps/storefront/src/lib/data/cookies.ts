@@ -34,7 +34,7 @@ export const getCacheTag = async (tag: string): Promise<string> => {
 }
 
 export const getCacheOptions = async (
-  tag: string
+  tag: string,
 ): Promise<{ tags: string[] } | Record<string, never>> => {
   if (typeof window !== "undefined") {
     return {}
@@ -113,6 +113,28 @@ export const removePendingCustomer = async () => {
   cookies.set("_medusa_pending_customer", "", {
     maxAge: -1,
   })
+}
+
+// Keep the short-lived, actorless registration token only in an httpOnly
+// cookie so the verification link can finish sign-in in the same browser.
+export const setPendingVerificationToken = async (token: string) => {
+  const cookies = await nextCookies()
+  cookies.set("_medusa_pending_verification", token, {
+    maxAge: 60 * 60,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  })
+}
+
+export const getPendingVerificationToken = async () => {
+  const cookies = await nextCookies()
+  return cookies.get("_medusa_pending_verification")?.value || null
+}
+
+export const removePendingVerificationToken = async () => {
+  const cookies = await nextCookies()
+  cookies.set("_medusa_pending_verification", "", { maxAge: -1 })
 }
 
 export const getCartId = async () => {
