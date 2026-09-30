@@ -362,11 +362,13 @@ medusaIntegrationTestRunner({
       const container = getContainer()
       const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
       const cartId = "canceled-before-prepare-cart"
-      const order = await container.resolve(Modules.ORDER).createOrders({
-        currency_code: "eur",
+      const orderService = container.resolve(Modules.ORDER)
+      const order = await orderService.createOrders({ currency_code: "eur" })
+      const orderId = order.id
+      await orderService.updateOrders(orderId, { status: "canceled" })
+      await expect(orderService.retrieveOrder(orderId)).resolves.toMatchObject({
         status: "canceled",
       })
-      const orderId = order.id
       await reserveDecantSource(container, cartId, makeRequest(fixture, 1))
       const [allocation] = await stock.listDecantAllocations({
         cart_id: cartId,
