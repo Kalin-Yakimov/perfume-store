@@ -28,15 +28,21 @@ const VerifyAccount = () => {
       return
     }
 
-    confirmEmailVerification(token).then(({ success, signedIn }) => {
-      setState(
-        success
-          ? signedIn
-            ? "success_signed_in"
-            : "success_sign_in_required"
-          : "error",
-      )
-    })
+    // Capture the credential in the component, then keep it out of browser
+    // history while the server verifies it.
+    window.history.replaceState(null, "", window.location.pathname)
+
+    confirmEmailVerification(token)
+      .then(({ success, signedIn }) => {
+        setState(
+          success
+            ? signedIn
+              ? "success_signed_in"
+              : "success_sign_in_required"
+            : "error",
+        )
+      })
+      .catch(() => setState("error"))
   }, [token])
 
   return (

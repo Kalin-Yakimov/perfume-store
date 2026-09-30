@@ -41,6 +41,8 @@
   "overrides": {
     "react": "19.0.5",
     "react-dom": "19.0.5",
+    "lodash": "4.18.1",
+    "postcss": "8.5.28",
     "eslint": {
       "ajv": "^6.12.4"
     },

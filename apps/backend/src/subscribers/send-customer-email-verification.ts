@@ -23,7 +23,6 @@ export default async function sendCustomerEmailVerification({
   const storefrontUrl = config.admin.storefrontUrl || "http://localhost:8000"
   const verificationUrl = new URL("/potvardi-profil", storefrontUrl)
   verificationUrl.searchParams.set("token", data.code)
-  verificationUrl.searchParams.set("email", data.entity_id)
 
   await notificationService.createNotifications({
     to: data.entity_id,

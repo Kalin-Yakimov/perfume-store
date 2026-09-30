@@ -112,7 +112,10 @@ export async function signup(
       fetchError.statusText !== "Unauthorized" ||
       fetchError.message !== "Identity with email already exists"
     ) {
-      return { state: "error", error: String(error) }
+      return {
+        state: "error",
+        error: "Регистрацията не можа да бъде завършена. Проверете данните и опитайте отново.",
+      }
     }
   }
 
@@ -157,8 +160,11 @@ async function completeLogin(
           : undefined,
       },
     )
-  } catch (error) {
-    return { state: "error", error: String(error) }
+  } catch {
+    return {
+      state: "error",
+      error: "Имейлът или паролата не са правилни. Опитайте отново.",
+    }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
@@ -228,8 +234,11 @@ async function completeLogin(
         }
       }
       token = loginResponse.token
-    } catch (error) {
-      return { state: "error", error: String(error) }
+    } catch {
+      return {
+        state: "error",
+        error: "Неуспешно активиране на профила. Моля, опитайте да влезете отново.",
+      }
     }
 
     await removePendingCustomer()
@@ -240,8 +249,11 @@ async function completeLogin(
 
   try {
     await transferCart()
-  } catch (error) {
-    return { state: "error", error: String(error) }
+  } catch {
+    return {
+      state: "error",
+      error: "Входът е успешен, но кошницата не можа да се свърже с профила ви.",
+    }
   }
 
   return { state: "success" }
@@ -257,8 +269,12 @@ export async function confirmEmailVerification(
   let verification: Awaited<ReturnType<typeof sdk.auth.verification.confirm>>
   try {
     verification = await sdk.auth.verification.confirm({ code: token })
-  } catch (error) {
-    return { success: false, signedIn: false, error: String(error) }
+  } catch {
+    return {
+      success: false,
+      signedIn: false,
+      error: "Линкът е невалиден или изтекъл. Поискайте нов линк за потвърждение.",
+    }
   }
 
   const identityToken = await getPendingVerificationToken()
@@ -335,10 +351,10 @@ export async function confirmEmailVerification(
     }
 
     return { success: true, signedIn: true }
-  } catch (error) {
+  } catch {
     await removePendingVerificationToken()
     await removePendingCustomer()
-    return { success: true, signedIn: false, error: String(error) }
+    return { success: true, signedIn: false }
   }
 }
 
@@ -445,8 +461,11 @@ export const addCustomerAddress = async (
   return sdk.store.customer
     .createAddress(address, {}, headers)
     .then(() => ({ success: true, error: null }))
-    .catch((err) => {
-      return { success: false, error: err.toString() }
+    .catch(() => {
+      return {
+        success: false,
+        error: "Адресът не можа да бъде добавен. Проверете данните и опитайте отново.",
+      }
     })
 }
 
@@ -460,8 +479,8 @@ export const deleteCustomerAddress = async (
   await sdk.store.customer
     .deleteAddress(addressId, headers)
     .then(() => ({ success: true, error: null }))
-    .catch((err) => {
-      return { success: false, error: err.toString() }
+    .catch(() => {
+      return { success: false, error: "Адресът не можа да бъде изтрит." }
     })
 }
 
@@ -501,7 +520,10 @@ export const updateCustomerAddress = async (
   return sdk.store.customer
     .updateAddress(addressId, address, {}, headers)
     .then(() => ({ success: true, error: null }))
-    .catch((err) => {
-      return { success: false, error: err.toString() }
+    .catch(() => {
+      return {
+        success: false,
+        error: "Адресът не можа да бъде обновен. Проверете данните и опитайте отново.",
+      }
     })
 }

@@ -23,7 +23,6 @@ export default async function sendCustomerPasswordReset({
   const storefrontUrl = config.admin.storefrontUrl || "http://localhost:8000"
   const resetUrl = new URL("/nova-parola", storefrontUrl)
   resetUrl.searchParams.set("token", data.token)
-  resetUrl.searchParams.set("email", data.entity_id)
 
   await notificationService.createNotifications({
     to: data.entity_id,

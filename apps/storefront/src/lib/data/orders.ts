@@ -82,7 +82,11 @@ export const createTransferRequest = async (
       headers
     )
     .then(({ order }) => ({ success: true, error: null, order }))
-    .catch((err) => ({ success: false, error: err.message, order: null }))
+    .catch(() => ({
+      success: false,
+      error: "Заявката не можа да бъде изпълнена. Опитайте отново.",
+      order: null,
+    }))
 }
 
 export const acceptTransferRequest = async (id: string, token: string) => {
@@ -91,7 +95,11 @@ export const acceptTransferRequest = async (id: string, token: string) => {
   return await sdk.store.order
     .acceptTransfer(id, { token }, {}, headers)
     .then(({ order }) => ({ success: true, error: null, order }))
-    .catch((err) => ({ success: false, error: err.message, order: null }))
+    .catch(() => ({
+      success: false,
+      error: "Прехвърлянето не можа да бъде потвърдено. Проверете линка и опитайте отново.",
+      order: null,
+    }))
 }
 
 export const declineTransferRequest = async (id: string, token: string) => {
@@ -100,5 +108,9 @@ export const declineTransferRequest = async (id: string, token: string) => {
   return await sdk.store.order
     .declineTransfer(id, { token }, {}, headers)
     .then(({ order }) => ({ success: true, error: null, order }))
-    .catch((err) => ({ success: false, error: err.message, order: null }))
+    .catch(() => ({
+      success: false,
+      error: "Заявката не можа да бъде отказана. Проверете линка и опитайте отново.",
+      order: null,
+    }))
 }

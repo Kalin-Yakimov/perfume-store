@@ -2,6 +2,31 @@ import { loadEnv, defineConfig, MedusaError } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
+if (process.env.NODE_ENV === "production") {
+  const secretNames = ["JWT_SECRET", "COOKIE_SECRET"] as const
+  const secrets = secretNames.map((name) => [name, process.env[name]?.trim()] as const)
+
+  for (const [name, value] of secrets) {
+    if (
+      !value ||
+      value.length < 32 ||
+      /^(supersecret|change[-_ ]?me|replace)/i.test(value)
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `${name} must be a unique random secret of at least 32 characters in production.`,
+      )
+    }
+  }
+
+  if (secrets[0][1] === secrets[1][1]) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "JWT_SECRET and COOKIE_SECRET must be different in production.",
+    )
+  }
+}
+
 const storefrontUrl =
   process.env.STOREFRONT_URL?.trim() || "http://localhost:8000"
 

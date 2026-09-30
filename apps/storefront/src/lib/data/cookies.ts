@@ -1,6 +1,21 @@
 import "server-only"
 import { cookies as nextCookies } from "next/headers"
 
+const cookieOptions = (sameSite: "lax" | "strict") => ({
+  httpOnly: true,
+  sameSite,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+})
+
+const clearCookie = async (name: string, sameSite: "lax" | "strict") => {
+  const cookies = await nextCookies()
+  cookies.set(name, "", {
+    ...cookieOptions(sameSite),
+    maxAge: 0,
+  })
+}
+
 export const getAuthHeaders = async (): Promise<
   { authorization: string } | Record<string, never>
 > => {
@@ -28,17 +43,12 @@ export const setAuthToken = async (token: string) => {
   const cookies = await nextCookies()
   cookies.set("_medusa_jwt", token, {
     maxAge: 60 * 60 * 24 * 7,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...cookieOptions("lax"),
   })
 }
 
 export const removeAuthToken = async () => {
-  const cookies = await nextCookies()
-  cookies.set("_medusa_jwt", "", {
-    maxAge: -1,
-  })
+  await clearCookie("_medusa_jwt", "lax")
 }
 
 export type PendingCustomer = {
@@ -56,9 +66,10 @@ export const setPendingCustomer = async (customer: PendingCustomer) => {
   const cookies = await nextCookies()
   cookies.set("_medusa_pending_customer", JSON.stringify(customer), {
     maxAge: 60 * 60 * 24,
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    // The customer follows the verification link from their mail provider,
+    // so this short-lived, non-authentication cookie must survive a top-level
+    // cross-site navigation back to the storefront.
+    ...cookieOptions("lax"),
   })
 }
 
@@ -78,10 +89,7 @@ export const getPendingCustomer = async (): Promise<PendingCustomer | null> => {
 }
 
 export const removePendingCustomer = async () => {
-  const cookies = await nextCookies()
-  cookies.set("_medusa_pending_customer", "", {
-    maxAge: -1,
-  })
+  await clearCookie("_medusa_pending_customer", "lax")
 }
 
 // Keep the short-lived, actorless registration token only in an httpOnly
@@ -90,9 +98,7 @@ export const setPendingVerificationToken = async (token: string) => {
   const cookies = await nextCookies()
   cookies.set("_medusa_pending_verification", token, {
     maxAge: 60 * 60,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...cookieOptions("lax"),
   })
 }
 
@@ -102,8 +108,7 @@ export const getPendingVerificationToken = async () => {
 }
 
 export const removePendingVerificationToken = async () => {
-  const cookies = await nextCookies()
-  cookies.set("_medusa_pending_verification", "", { maxAge: -1 })
+  await clearCookie("_medusa_pending_verification", "lax")
 }
 
 export const getCartId = async () => {
@@ -117,15 +122,10 @@ export const setCartId = async (cartId: string) => {
   const cookies = await nextCookies()
   cookies.set("_medusa_cart_id", cartId, {
     maxAge: 60 * 60 * 24 * 7,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...cookieOptions("lax"),
   })
 }
 
 export const removeCartId = async () => {
-  const cookies = await nextCookies()
-  cookies.set("_medusa_cart_id", "", {
-    maxAge: -1,
-  })
+  await clearCookie("_medusa_cart_id", "lax")
 }

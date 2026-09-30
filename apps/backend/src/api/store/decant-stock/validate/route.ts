@@ -3,32 +3,18 @@ import { Modules } from "@medusajs/framework/utils"
 
 import { canFulfillCartDecants } from "../../../../modules/decant-stock/cart-preview"
 import type { PreviewCartItem } from "../../../../modules/decant-stock/cart-preview"
-
-type ValidateBody = {
-  cart_id?: string
-  variant_id?: string
-  quantity?: number
-  line_item_id?: string
-}
+import type { ValidateDecantStockBody } from "./middlewares"
 
 export async function POST(
-  req: MedusaRequest<ValidateBody>,
+  req: MedusaRequest<ValidateDecantStockBody>,
   res: MedusaResponse
 ) {
-  const cartId = req.body?.cart_id
-  const lineItemId = req.body?.line_item_id
-  const variantId = req.body?.variant_id
-  const quantity = Number(req.body?.quantity)
-
-  if (
-    !cartId ||
-    (!lineItemId && !variantId) ||
-    !Number.isInteger(quantity) ||
-    quantity < 1
-  ) {
-    res.status(400).json({ message: "Невалидна заявка за наличност." })
-    return
-  }
+  const {
+    cart_id: cartId,
+    line_item_id: lineItemId,
+    variant_id: variantId,
+    quantity,
+  } = req.validatedBody
 
   const cart = await req.scope.resolve(Modules.CART).retrieveCart(cartId, {
     relations: ["items"],

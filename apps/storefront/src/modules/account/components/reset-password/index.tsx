@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { applyPasswordReset } from "@lib/data/customer"
 import Input from "@modules/common/components/input"
@@ -11,10 +11,18 @@ const inputClassName =
 
 const ResetPassword = () => {
   const searchParams = useSearchParams()
-  const token = searchParams.get("token") || ""
+  const [token] = useState(() => searchParams.get("token") || "")
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    if (token) {
+      // Keep the one-time credential in memory but remove it from the visible
+      // URL/history as soon as the form has captured it.
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+  }, [token])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

@@ -133,8 +133,10 @@ export default class AbvSmtpNotificationService extends AbstractNotificationProv
       })
 
       return { id: result.messageId }
-    } catch (error) {
-      this.logger_.error("Failed to send account email through ABV SMTP", error)
+    } catch {
+      // SMTP errors can include recipient addresses or server details; avoid
+      // writing those details to application logs.
+      this.logger_.error("Failed to send account email through ABV SMTP")
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
         "Неуспешно изпращане на имейл. Проверете SMTP настройките на АБВ Поща."
