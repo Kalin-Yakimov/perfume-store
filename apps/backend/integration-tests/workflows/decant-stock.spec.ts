@@ -318,24 +318,20 @@ medusaIntegrationTestRunner({
       const container = getContainer()
       const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
       const cartId = "prepared-order-cart"
-      const orderId = "prepared-order"
+      const order = await container.resolve(Modules.ORDER).createOrders({
+        currency_code: "eur",
+        status: "pending",
+      })
+      const orderId = order.id
       await reserveDecantSource(container, cartId, makeRequest(fixture, 9))
-
-      const orderService = {
-        retrieveOrder: jest.fn(async () => ({ id: orderId, status: "pending" })),
-      }
-      const query = {
-        graph: jest.fn(async () => ({ data: [{ cart_id: cartId }] })),
-      }
-      const scopedContainer = createScopedContainer(
-        container,
-        new Map<string, unknown>([
-          [Modules.ORDER, orderService],
-          [ContainerRegistrationKeys.QUERY, query],
-        ]),
+      const reserved = await stock.listDecantAllocations({ cart_id: cartId, status: "reserved" })
+      await Promise.all(
+        reserved.map((allocation) =>
+          stock.updateDecantAllocations({ id: allocation.id, order_id: orderId }),
+        ),
       )
 
-      const first = await prepareDecantOrderWorkflow(scopedContainer).run({
+      const first = await prepareDecantOrderWorkflow(container).run({
         input: { order_id: orderId },
       })
       expect(first.result).toEqual({ prepared_vials: 9, opened_bottles: 1 })
@@ -350,7 +346,7 @@ medusaIntegrationTestRunner({
       expect(prepared).toHaveLength(9)
       expect(prepared.every((allocation) => allocation.status === "prepared")).toBe(true)
 
-      const second = await prepareDecantOrderWorkflow(scopedContainer).run({
+      const second = await prepareDecantOrderWorkflow(container).run({
         input: { order_id: orderId },
       })
       expect(second.result).toEqual({ prepared_vials: 0, opened_bottles: 0 })
@@ -366,26 +362,27 @@ medusaIntegrationTestRunner({
       const container = getContainer()
       const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
       const cartId = "canceled-before-prepare-cart"
-      const orderId = "canceled-before-prepare"
+      const order = await container.resolve(Modules.ORDER).createOrders({
+        currency_code: "eur",
+        status: "canceled",
+      })
+      const orderId = order.id
       await reserveDecantSource(container, cartId, makeRequest(fixture, 1))
-
-      const scopedContainer = createScopedContainer(
-        container,
-        new Map<string, unknown>([
-          [Modules.ORDER, { retrieveOrder: async () => ({ id: orderId, status: "canceled" }) }],
-          [ContainerRegistrationKeys.QUERY, { graph: async () => ({ data: [{ cart_id: cartId }] }) }],
-        ]),
-      )
+      const [allocation] = await stock.listDecantAllocations({
+        cart_id: cartId,
+        status: "reserved",
+      })
+      await stock.updateDecantAllocations({ id: allocation.id, order_id: orderId })
 
       await expect(
-        prepareDecantOrderWorkflow(scopedContainer).run({
+        prepareDecantOrderWorkflow(container).run({
           input: { order_id: orderId },
         }),
       ).rejects.toThrow("Отказана поръчка не може да бъде приготвена.")
 
-      const allocation = await stock.listDecantAllocations({ cart_id: cartId })
-      expect(allocation).toHaveLength(1)
-      expect(allocation[0].status).toBe("reserved")
+      const reservedAllocation = await stock.listDecantAllocations({ order_id: orderId })
+      expect(reservedAllocation).toHaveLength(1)
+      expect(reservedAllocation[0].status).toBe("reserved")
       const level = await getInventoryLevel()
       expect(Number(level.reserved_quantity)).toBe(1)
       expect(Number(level.stocked_quantity)).toBe(1)
