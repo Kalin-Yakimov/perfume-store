@@ -5,6 +5,7 @@ import {
 } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import {
+  cancelOrderWorkflow,
   createInventoryLevelsWorkflow,
   createProductsWorkflow,
   createStockLocationsWorkflow,
@@ -365,7 +366,7 @@ medusaIntegrationTestRunner({
       const orderService = container.resolve(Modules.ORDER)
       const order = await orderService.createOrders({ currency_code: "eur" })
       const orderId = order.id
-      await orderService.updateOrders(orderId, { status: "canceled" })
+      await cancelOrderWorkflow(container).run({ input: { order_id: orderId } })
       await expect(orderService.retrieveOrder(orderId)).resolves.toMatchObject({
         status: "canceled",
       })
