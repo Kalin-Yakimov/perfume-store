@@ -18,37 +18,6 @@ export const getAuthHeaders = async (): Promise<
   }
 }
 
-export const getCacheTag = async (tag: string): Promise<string> => {
-  try {
-    const cookies = await nextCookies()
-    const cacheId = cookies.get("_medusa_cache_id")?.value
-
-    if (!cacheId) {
-      return ""
-    }
-
-    return `${tag}-${cacheId}`
-  } catch {
-    return ""
-  }
-}
-
-export const getCacheOptions = async (
-  tag: string,
-): Promise<{ tags: string[] } | Record<string, never>> => {
-  if (typeof window !== "undefined") {
-    return {}
-  }
-
-  const cacheTag = await getCacheTag(tag)
-
-  if (!cacheTag) {
-    return {}
-  }
-
-  return { tags: [`${cacheTag}`] }
-}
-
 // `sameSite: "lax"` rather than `"strict"`: the customer returns from a
 // redirect-based payment method (iDEAL, Bancontact, ...) via a cross-site
 // top-level navigation. A "strict" cookie is withheld on that navigation, so

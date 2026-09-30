@@ -4,12 +4,9 @@ import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
-import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import {
   getAuthHeaders,
-  getCacheOptions,
-  getCacheTag,
   getCartId,
   getPendingCustomer,
   getPendingVerificationToken,
@@ -59,10 +56,6 @@ export const retrieveCustomer =
       ...authHeaders,
     }
 
-    const next = {
-      ...(await getCacheOptions("customers")),
-    }
-
     return await sdk.client
       .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
         method: "GET",
@@ -70,8 +63,9 @@ export const retrieveCustomer =
           fields: "*orders",
         },
         headers,
-        next,
-        cache: "force-cache",
+        // Customer records are private and include personally identifiable
+        // information; never store them in Next.js' shared data cache.
+        cache: "no-store",
       })
       .then(({ customer }) => customer)
       .catch(() => null)
@@ -86,9 +80,6 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
     .update(body, {}, headers)
     .then(({ customer }) => customer)
     .catch(medusaError)
-
-  const cacheTag = await getCacheTag("customers")
-  revalidateTag(cacheTag)
 
   return updateRes
 }
@@ -247,9 +238,6 @@ async function completeLogin(
   await setAuthToken(token)
   await removePendingVerificationToken()
 
-  const customerCacheTag = await getCacheTag("customers")
-  revalidateTag(customerCacheTag)
-
   try {
     await transferCart()
   } catch (error) {
@@ -340,9 +328,6 @@ export async function confirmEmailVerification(
     await removePendingVerificationToken()
     await removePendingCustomer()
 
-    const customerCacheTag = await getCacheTag("customers")
-    revalidateTag(customerCacheTag)
-
     try {
       await transferCart()
     } catch {
@@ -413,13 +398,7 @@ export async function signout(countryCode: string) {
   await removeAuthToken()
   await removePendingVerificationToken()
 
-  const customerCacheTag = await getCacheTag("customers")
-  revalidateTag(customerCacheTag)
-
   await removeCartId()
-
-  const cartCacheTag = await getCacheTag("carts")
-  revalidateTag(cartCacheTag)
 
   redirect(`${countryCode === "bg" ? "" : `/${countryCode}`}/vhod`)
 }
@@ -435,8 +414,6 @@ export async function transferCart() {
 
   await sdk.store.cart.transferCart(cartId, {}, headers)
 
-  const cartCacheTag = await getCacheTag("carts")
-  revalidateTag(cartCacheTag)
 }
 
 export const addCustomerAddress = async (
@@ -467,11 +444,7 @@ export const addCustomerAddress = async (
 
   return sdk.store.customer
     .createAddress(address, {}, headers)
-    .then(async () => {
-      const customerCacheTag = await getCacheTag("customers")
-      revalidateTag(customerCacheTag)
-      return { success: true, error: null }
-    })
+    .then(() => ({ success: true, error: null }))
     .catch((err) => {
       return { success: false, error: err.toString() }
     })
@@ -486,11 +459,7 @@ export const deleteCustomerAddress = async (
 
   await sdk.store.customer
     .deleteAddress(addressId, headers)
-    .then(async () => {
-      const customerCacheTag = await getCacheTag("customers")
-      revalidateTag(customerCacheTag)
-      return { success: true, error: null }
-    })
+    .then(() => ({ success: true, error: null }))
     .catch((err) => {
       return { success: false, error: err.toString() }
     })
@@ -531,11 +500,7 @@ export const updateCustomerAddress = async (
 
   return sdk.store.customer
     .updateAddress(addressId, address, {}, headers)
-    .then(async () => {
-      const customerCacheTag = await getCacheTag("customers")
-      revalidateTag(customerCacheTag)
-      return { success: true, error: null }
-    })
+    .then(() => ({ success: true, error: null }))
     .catch((err) => {
       return { success: false, error: err.toString() }
     })

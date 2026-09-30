@@ -1,5 +1,9 @@
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
+import {
+  getPublicCacheOptions,
+  PUBLIC_CACHE_TTL,
+} from "./lib/data/cache-policy"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
 const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
@@ -9,10 +13,10 @@ const DEFAULT_REGION = (
 
 const regionMapCache = {
   regionMap: new Map<string, HttpTypes.StoreRegion>(),
-  regionMapUpdated: Date.now(),
+  regionMapUpdated: 0,
 }
 
-async function getRegionMap(cacheId: string) {
+async function getRegionMap() {
   const { regionMap, regionMapUpdated } = regionMapCache
 
   if (!BACKEND_URL) {
@@ -22,8 +26,9 @@ async function getRegionMap(cacheId: string) {
   }
 
   if (
+    process.env.NODE_ENV === "development" ||
     !regionMap.keys().next().value ||
-    regionMapUpdated < Date.now() - 3600 * 1000
+    regionMapUpdated < Date.now() - PUBLIC_CACHE_TTL.regions * 1000
   ) {
     // Fetch regions from Medusa. We can't use the JS client here because middleware is running on Edge and the client needs a Node environment.
     const response = await fetch(`${BACKEND_URL}/store/regions`, {
@@ -31,11 +36,7 @@ async function getRegionMap(cacheId: string) {
       headers: {
         "x-publishable-api-key": PUBLISHABLE_API_KEY!,
       },
-      next: {
-        revalidate: 3600,
-        tags: [`regions-${cacheId}`],
-      },
-      cache: "force-cache",
+      ...getPublicCacheOptions("regions"),
     })
 
     if (!response.ok) {
@@ -49,6 +50,9 @@ async function getRegionMap(cacheId: string) {
     if (!regions?.length) {
       return new Map<string, HttpTypes.StoreRegion>()
     }
+
+    // Drop removed country mappings before writing the current region list.
+    regionMapCache.regionMap.clear()
 
     // Create a map of country codes to regions.
     regions.forEach((region: HttpTypes.StoreRegion) => {
@@ -112,10 +116,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const cacheIdCookie = request.cookies.get("_medusa_cache_id")
-  const cacheId = cacheIdCookie?.value || crypto.randomUUID()
-
-  const regionMap = await getRegionMap(cacheId)
+  const regionMap = await getRegionMap()
   const countryCode = await getCountryCode(request, regionMap)
 
   // if the country code is available, use it, otherwise use the default region
@@ -217,11 +218,6 @@ export async function middleware(request: NextRequest) {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = `/${country}/${internalSegments.join("/")}`
     const response = NextResponse.rewrite(rewriteUrl)
-    if (!cacheIdCookie) {
-      response.cookies.set("_medusa_cache_id", cacheId, {
-        maxAge: 60 * 60 * 24,
-      })
-    }
     return response
   }
 
@@ -231,18 +227,6 @@ export async function middleware(request: NextRequest) {
       const rewriteUrl = request.nextUrl.clone()
       rewriteUrl.pathname = internalPath
       const response = NextResponse.rewrite(rewriteUrl)
-      if (!cacheIdCookie) {
-        response.cookies.set("_medusa_cache_id", cacheId, {
-          maxAge: 60 * 60 * 24,
-        })
-      }
-      return response
-    }
-    if (!cacheIdCookie) {
-      const response = NextResponse.next()
-      response.cookies.set("_medusa_cache_id", cacheId, {
-        maxAge: 60 * 60 * 24,
-      })
       return response
     }
     return NextResponse.next()

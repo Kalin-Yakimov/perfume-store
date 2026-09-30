@@ -10,7 +10,8 @@ import {
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
-import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { getAuthHeaders } from "./cookies"
+import { getPublicCacheOptions } from "./cache-policy"
 import { getRegion, retrieveRegion } from "./regions"
 
 type ProductListQueryParams = (HttpTypes.FindParams &
@@ -57,16 +58,13 @@ export const listProducts = async ({
     }
   }
 
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
+  const authHeaders = await getAuthHeaders()
+  const headers = { ...authHeaders }
 
-  const next = {
-    ...(await getCacheOptions("products")),
-    // Admin changes happen in Medusa, outside this Next.js process, so a
-    // tag-only cache could otherwise retain old prices or inventory forever.
-    revalidate: 60,
-  }
+  const cacheOptions = getPublicCacheOptions(
+    "products",
+    Boolean(authHeaders.authorization),
+  )
 
   return sdk.client
     .fetch<{ products: HttpTypes.StoreProduct[]; count: number }>(
@@ -82,9 +80,7 @@ export const listProducts = async ({
           ...queryParams,
         },
         headers,
-        next,
-        cache:
-          process.env.NODE_ENV === "development" ? "no-store" : "force-cache",
+        ...cacheOptions,
       },
     )
     .then(({ products, count }) => {

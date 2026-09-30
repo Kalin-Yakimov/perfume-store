@@ -2,39 +2,42 @@
 
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
-import { getCacheOptions } from "./cookies"
+import { getPublicCacheOptions, PUBLIC_CACHE_TTL } from "./cache-policy"
 
 export const listRegions = async () => {
-  const isDevelopment = process.env.NODE_ENV === "development"
-  const next = isDevelopment ? {} : await getCacheOptions("regions")
+  const cacheOptions = getPublicCacheOptions("regions")
 
   return await sdk.client
     .fetch<{ regions: HttpTypes.StoreRegion[] }>(`/store/regions`, {
       method: "GET",
       query: { fields: "*countries" },
-      next,
-      cache: isDevelopment ? "no-store" : "force-cache",
+      ...cacheOptions,
     })
     .then(({ regions }) => regions)
 }
 
 export const retrieveRegion = async (id: string) => {
-  const next = {
-    ...(await getCacheOptions(["regions", id].join("-"))),
-  }
+  const cacheOptions = getPublicCacheOptions("regions")
 
   return await sdk.client
     .fetch<{ region: HttpTypes.StoreRegion }>(`/store/regions/${id}`, {
       method: "GET",
-      next,
-      cache: "force-cache",
+      ...cacheOptions,
     })
     .then(({ region }) => region)
 }
 
 const regionMap = new Map<string, HttpTypes.StoreRegion>()
+let regionMapUpdatedAt = 0
 
 export const getRegion = async (countryCode: string) => {
+  if (
+    process.env.NODE_ENV === "development" ||
+    Date.now() - regionMapUpdatedAt > PUBLIC_CACHE_TTL.regions * 1000
+  ) {
+    regionMap.clear()
+  }
+
   if (regionMap.has(countryCode)) {
     return regionMap.get(countryCode)
   }
@@ -53,6 +56,7 @@ export const getRegion = async (countryCode: string) => {
       }
     })
   })
+  regionMapUpdatedAt = Date.now()
 
   const region = countryCode
     ? regionMap.get(countryCode.toLowerCase())
