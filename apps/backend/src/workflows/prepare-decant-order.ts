@@ -32,6 +32,20 @@ type LockingService = {
 const roundMl = (value: number) => Math.round(value * 100) / 100
 const invalid = (message: string) => new MedusaError(MedusaError.Types.INVALID_DATA, message)
 
+async function retrieveOrderForPreparation(container: MedusaContainer, orderId: string) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph(
+    {
+      entity: "order",
+      fields: ["id", "status", "canceled_at"],
+      filters: { id: orderId },
+    },
+    { throwIfKeyNotFound: true },
+  )
+
+  return data[0]
+}
+
 /** Order/cart linking and order.placed subscribers can run in either order.
  * Reconcile the link when staff first opens or prepares the order. */
 export async function linkDecantAllocationsForOrder(
@@ -39,8 +53,7 @@ export async function linkDecantAllocationsForOrder(
   orderId: string
 ) {
   const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
-  const orderService = container.resolve(Modules.ORDER)
-  const order = await orderService.retrieveOrder(orderId)
+  const order = await retrieveOrderForPreparation(container, orderId)
   if (order.status === "canceled" || order.canceled_at) return
 
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
@@ -79,8 +92,7 @@ const prepareDecantOrderStep = createStep(
     const decantStock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
     const inventory: InventoryService = container.resolve(Modules.INVENTORY)
     const locking: LockingService = container.resolve(Modules.LOCKING)
-    const orderService = container.resolve(Modules.ORDER)
-    const order = await orderService.retrieveOrder(order_id)
+    const order = await retrieveOrderForPreparation(container, order_id)
     if (order.status === "canceled" || order.canceled_at) {
       throw invalid("Отказана поръчка не може да бъде приготвена.")
     }
@@ -106,7 +118,7 @@ const prepareDecantOrderStep = createStep(
     ].sort()
 
     const result = await locking.execute(lockKeys, async () => {
-      const currentOrder = await orderService.retrieveOrder(order_id)
+      const currentOrder = await retrieveOrderForPreparation(container, order_id)
       if (currentOrder.status === "canceled" || currentOrder.canceled_at) {
         throw invalid("Отказана поръчка не може да бъде приготвена.")
       }
