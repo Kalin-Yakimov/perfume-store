@@ -1,6 +1,7 @@
 import { MedusaContainer } from "@medusajs/framework"
 import {
   ContainerRegistrationKeys,
+  MedusaError,
   ModuleRegistrationName,
   Modules,
 } from "@medusajs/framework/utils"
@@ -29,7 +30,8 @@ export default async function seedDevBulgariaShipping({
   container: MedusaContainer
 }) {
   if (process.env.NODE_ENV !== "development") {
-    throw new Error(
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
       "Test courier rates can only be seeded when NODE_ENV=development.",
     )
   }
@@ -60,12 +62,16 @@ export default async function seedDevBulgariaShipping({
   ) ?? (locations as any[])[0]
 
   if (!region || !profile || !location) {
-    throw new Error(
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
       "A EUR region containing Bulgaria, a shipping profile, and a stock location are required before adding test shipping rates.",
     )
   }
   if (region.currency_code !== "eur") {
-    throw new Error("The Bulgarian region must use EUR for these sample rates.")
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "The Bulgarian region must use EUR for these sample rates.",
+    )
   }
 
   const allSets = sets as { id: string; name: string }[]
@@ -97,7 +103,10 @@ export default async function seedDevBulgariaShipping({
     item.fulfillment_set?.id === fulfillmentSet?.id,
   )
   if (!zone) {
-    throw new Error("Could not locate the Bulgarian test delivery service zone.")
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Could not locate the Bulgarian test delivery service zone.",
+    )
   }
 
   const existingNames = new Set(

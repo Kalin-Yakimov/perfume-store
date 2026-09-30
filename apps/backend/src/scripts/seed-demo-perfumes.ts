@@ -1,6 +1,7 @@
 import { MedusaContainer } from "@medusajs/framework"
 import {
   ContainerRegistrationKeys,
+  MedusaError,
   ProductStatus,
 } from "@medusajs/framework/utils"
 import {
@@ -71,7 +72,10 @@ export default async function seedDemoPerfumes({
   const shippingProfile = shippingProfiles[0]
 
   if (!defaultSalesChannel || !shippingProfile) {
-    throw new Error("The demo store must have a sales channel and shipping profile")
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "The demo store must have a sales channel and shipping profile",
+    )
   }
 
   const { data: existingOptions } = await query.graph({
@@ -98,7 +102,10 @@ export default async function seedDemoPerfumes({
   }
 
   if (!volumeOptionId) {
-    throw new Error("Could not create the perfume volume option")
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Could not create the perfume volume option",
+    )
   }
 
   const perfumeVolumeOptionId = volumeOptionId

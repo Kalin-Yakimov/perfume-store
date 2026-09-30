@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import Image from "next/image"
 
 import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -36,12 +37,15 @@ export default async function NotesPage() {
               href={`/parfyumni-notki/${note.slug}`}
               className="group flex min-h-28 items-center gap-4 border-b border-r border-[#ded7cf] bg-[#fffdf9] p-4 transition hover:bg-[#eee8df]"
             >
-              <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-[#f1ece6]">
+              <span className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-[#f1ece6]">
                 {note.image_url ? (
-                  <img
+                  <Image
                     src={note.image_url}
                     alt={note.name}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="80px"
+                    unoptimized
+                    className="object-cover"
                   />
                 ) : (
                   <span className="font-display text-2xl text-[#b7a89b]">

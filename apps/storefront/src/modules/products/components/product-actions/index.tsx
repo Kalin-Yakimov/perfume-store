@@ -153,7 +153,7 @@ export default function ProductActions({
   }, [availableVariants, options])
 
   useEffect(() => {
-    if (isDecant && Object.keys(options).length === 0) return
+    if (Object.keys(options).length === 0 && (!selectedVariant || isDecant)) return
     const params = new URLSearchParams(searchParams.toString())
     const value = isValidVariant ? selectedVariant?.id : null
 
@@ -168,7 +168,7 @@ export default function ProductActions({
     }
 
     router.replace(pathname + "?" + params.toString(), { scroll: false })
-  }, [selectedVariant, isValidVariant])
+  }, [isDecant, isValidVariant, options, pathname, router, searchParams, selectedVariant])
 
   // check if the selected variant is in stock
   const inStock = useMemo(() => {
@@ -229,7 +229,7 @@ export default function ProductActions({
           : nextQuantity,
       )
     })
-  }, [inStock, maxQuantity, selectedVariant?.id])
+  }, [inStock, maxQuantity, selectedVariant])
 
   const unavailableVariantIds = useMemo(
     () =>

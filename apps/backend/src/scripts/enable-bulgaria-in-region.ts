@@ -1,5 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils";
 import { updateRegionsWorkflow } from "@medusajs/medusa/core-flows";
 
 /** Add Bulgaria to the existing EUR region without removing any active countries. */
@@ -34,7 +34,8 @@ export default async function enableBulgariaInRegion({
     (region) => region.currency_code === "eur",
   );
   if (euroRegions.length !== 1) {
-    throw new Error(
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
       "Expected exactly one EUR region. Select the target region manually before running this script.",
     );
   }

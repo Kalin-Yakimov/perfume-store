@@ -11,7 +11,7 @@
 - Backend health: http://localhost:9000/health
 - Спиране: `D:\\New_project\\stop-dev.cmd`
 
-За ръчни команди в тази работна среда изберете включения Node.js 22 в PowerShell. На друга машина инсталирайте Node.js `^20.19.0 || >=22.12.0` и npm 10.9.3:
+За ръчни команди в тази работна среда изберете включения Node.js 22.20.0 в PowerShell. За друга среда използвайте Node.js `22.20.x` и npm 10.9.3; версията на Node.js е записана и в `.node-version`:
 
 ```powershell
 $env:Path = "D:\New_project\.tools\node-22;$env:Path"
@@ -20,6 +20,7 @@ npm ci
 npm run lint
 npm run typecheck
 npm run test:unit
+npm run build
 ```
 
 Българските публични адреси са без префикс на държава: `/parfyumi`, `/otlivki`, `/dizaynerski-kashti`, `/parfyumni-notki`, `/lyubimi`, `/koshnitsa`, `/vhod` и `/zavarshvane-na-porachka`. Старите английски адреси се пренасочват към тях.
@@ -30,6 +31,6 @@ npm run test:unit
 
 ## Проверки и текущи ограничения
 
-GitHub Actions изпълнява lint, TypeScript проверка и backend unit тестове. Интеграционни тестове и production build още не са част от автоматичните проверки.
+GitHub Actions проверява фиксираните версии на Node.js/npm, изпълнява lint, TypeScript проверка, backend unit тестове и production build. Build-ът в CI използва само временни тестови стойности за публични настройки и SMTP; те не са production secrets и артефактът не се публикува.
 
 Поръчки могат да се използват за локално тестване на потока и наличностите. Не свързвайте реални клиенти: куриерските опции/тарифи и плащането са тестови, а реални интеграции и юридическа готовност още няма.

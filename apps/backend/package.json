@@ -16,7 +16,7 @@
     "build": "medusa build",
     "start": "medusa start",
     "dev": "medusa develop",
-    "lint": "medusa lint",
+    "lint": "eslint .",
     "test:integration:http": "node ./scripts/run-jest.cjs integration:http",
     "test:integration:modules": "node ./scripts/run-jest.cjs integration:modules",
     "test:unit": "node ./scripts/run-jest.cjs unit",
@@ -53,7 +53,7 @@
     "yalc": "^1.0.0-pre.53"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "22.20.x"
   },
   "packageManager": "npm@10.9.3"
 }

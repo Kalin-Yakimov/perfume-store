@@ -1,5 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import { createInventoryItemsWorkflow } from "@medusajs/medusa/core-flows"
 
 const SKU = "DEMO-PERFUME-01"
@@ -26,7 +26,10 @@ export default async function createDemoAmberVeilInventory({
     | { id: string; inventory_items?: { inventory_item_id: string }[] }
     | undefined
   if (!variant) {
-    throw new Error(`Variant with SKU ${SKU} was not found.`)
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Variant with SKU ${SKU} was not found.`,
+    )
   }
   if (variant.inventory_items?.length) {
     return
@@ -38,7 +41,10 @@ export default async function createDemoAmberVeilInventory({
   })
   const location = locations[0] as { id: string } | undefined
   if (!location) {
-    throw new Error("No stock location exists for the demo inventory item.")
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "No stock location exists for the demo inventory item.",
+    )
   }
 
   const { result } = await createInventoryItemsWorkflow(container).run({

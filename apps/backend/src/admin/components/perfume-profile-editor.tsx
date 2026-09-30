@@ -1,4 +1,4 @@
-import { Select, toast } from "@medusajs/ui"
+import { Input, Popover, Select, toast } from "@medusajs/ui"
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -48,6 +48,15 @@ type AdminSelectOption = {
   label: string
 }
 
+type SearchableSelectProps = {
+  id: string
+  value: string
+  placeholder: string
+  options: AdminSelectOption[]
+  onChange: (value: string) => void
+  allowClear?: boolean
+}
+
 const EMPTY_SELECT_VALUE = "__perfume_store_empty__"
 
 const AdminSelect = ({
@@ -82,6 +91,103 @@ const AdminSelect = ({
     </Select.Content>
   </Select>
 )
+
+const SearchableSelect = ({
+  id,
+  value,
+  placeholder,
+  options,
+  onChange,
+  allowClear = false,
+}: SearchableSelectProps) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const selectedOption = options.find((option) => option.value === value)
+  const normalizedQuery = query.trim().toLocaleLowerCase("bg")
+  const filteredOptions = options.filter((option) =>
+    option.label.toLocaleLowerCase("bg").includes(normalizedQuery)
+  )
+
+  const updateOpenState = (open: boolean) => {
+    setIsOpen(open)
+    setQuery("")
+  }
+
+  const selectOption = (nextValue: string) => {
+    onChange(nextValue)
+    updateOpenState(false)
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={updateOpenState}>
+      <Popover.Trigger asChild>
+        <button
+          id={id}
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          className="bg-ui-bg-field text-ui-fg-base flex h-8 w-full items-center justify-between gap-2 rounded-md border px-2.5 text-left text-sm outline-none focus-visible:shadow-borders-focus"
+        >
+          <span className={selectedOption ? "truncate" : "text-ui-fg-muted truncate"}>
+            {selectedOption?.label || placeholder}
+          </span>
+          <span aria-hidden="true" className="text-ui-fg-muted shrink-0">
+            ▾
+          </span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Content
+        align="start"
+        sideOffset={4}
+        className="bg-ui-bg-base shadow-elevation-card-rest z-50 rounded-md border p-2"
+        style={{ width: "var(--radix-popover-trigger-width)" }}
+      >
+        <Input
+          autoFocus
+          aria-label="Търсене в списъка"
+          placeholder="Започнете да пишете за търсене…"
+          size="small"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <div
+          role="listbox"
+          aria-label={placeholder}
+          className="mt-2 max-h-56 overflow-y-auto"
+        >
+          {allowClear && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={!value}
+              onClick={() => selectOption("")}
+              className="text-ui-fg-subtle hover:bg-ui-bg-subtle w-full rounded px-2 py-1.5 text-left text-sm"
+            >
+              {placeholder}
+            </button>
+          )}
+          {filteredOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => selectOption(option.value)}
+              className="text-ui-fg-base hover:bg-ui-bg-subtle w-full rounded px-2 py-1.5 text-left text-sm"
+            >
+              {option.label}
+            </button>
+          ))}
+          {!filteredOptions.length && (
+            <p className="text-ui-fg-subtle px-2 py-2 text-sm" role="status">
+              Няма намерени резултати.
+            </p>
+          )}
+        </div>
+      </Popover.Content>
+    </Popover>
+  )
+}
 
 const readStringArray = (value: unknown) =>
   Array.isArray(value)
@@ -157,7 +263,7 @@ const SelectionField = ({
         {label}
       </label>
       <div className="flex gap-2">
-        <AdminSelect
+        <SearchableSelect
           id={id}
           value={pendingId}
           placeholder={placeholder}
@@ -431,11 +537,12 @@ const PerfumeProfileEditor = ({
             <label htmlFor="profile-designer" className="text-sm font-medium">
               Дизайнерска къща
             </label>
-            <AdminSelect
+            <SearchableSelect
               id="profile-designer"
               value={designerId}
               placeholder="Не е избрана"
               onChange={setDesignerId}
+              allowClear
               options={designers.map((designer) => ({
                 value: designer.id,
                 label: designer.name,

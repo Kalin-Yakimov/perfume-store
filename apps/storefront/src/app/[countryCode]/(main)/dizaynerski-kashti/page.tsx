@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import Image from "next/image"
 
 import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -36,12 +37,15 @@ export default async function PerfumeHousesPage() {
               href={`/dizaynerski-kashti/${designer.slug}`}
               className="group grid min-h-36 grid-cols-[88px_1fr] items-center gap-5 border-b border-r border-[#ded7cf] bg-[#fffdf9] p-5 transition hover:bg-[#eee8df]"
             >
-              <span className="flex h-20 w-[88px] items-center justify-center overflow-hidden bg-white">
+              <span className="relative flex h-20 w-[88px] items-center justify-center overflow-hidden bg-white">
                 {designer.image_url ? (
-                  <img
+                  <Image
                     src={designer.image_url}
                     alt={`Лого на ${designer.name}`}
-                    className="h-full w-full object-contain p-1"
+                    fill
+                    sizes="88px"
+                    unoptimized
+                    className="object-contain p-1"
                   />
                 ) : (
                   <span className="font-display text-3xl text-[#b7a89b]">

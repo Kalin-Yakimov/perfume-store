@@ -31,7 +31,10 @@ export default function Shipping({
   const isOpen =
     !searchParams.get("step") || searchParams.get("step") === "delivery"
   const savedOptionId = cart.shipping_methods?.at(-1)?.shipping_option_id || ""
-  const savedPoint = readDeliveryPoint(cart.metadata?.delivery_point)
+  const savedPoint = useMemo(
+    () => readDeliveryPoint(cart.metadata?.delivery_point),
+    [cart.metadata?.delivery_point],
+  )
   const [selectedId, setSelectedId] = useState(savedOptionId)
   const [point, setPoint] = useState<DeliveryPoint | null>(savedPoint)
   const [showMap, setShowMap] = useState(false)
@@ -45,9 +48,12 @@ export default function Shipping({
     setSelectedId(savedOptionId)
     setPoint(savedPoint)
     setShowMap(false)
-  }, [savedOptionId, savedPoint?.id, savedPoint?.shippingOptionId])
+  }, [savedOptionId, savedPoint])
 
-  const options = availableShippingMethods || []
+  const options = useMemo(
+    () => availableShippingMethods || [],
+    [availableShippingMethods],
+  )
   const selectedOption = options.find((option) => option.id === selectedId)
   const savedOption = options.find((option) => option.id === savedOptionId)
   const requiresPoint = selectedOption
@@ -104,7 +110,7 @@ export default function Shipping({
     return () => {
       active = false
     }
-  }, [availableShippingMethods, cart.id])
+  }, [cart.id, options])
 
   useEffect(() => {
     const currentStep = searchParams.get("step")
