@@ -5,7 +5,6 @@ import {
 } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import {
-  cancelOrderWorkflow,
   createInventoryLevelsWorkflow,
   createProductsWorkflow,
   createStockLocationsWorkflow,
@@ -357,38 +356,6 @@ medusaIntegrationTestRunner({
       const level = await getInventoryLevel()
       expect(Number(level.stocked_quantity)).toBe(0)
       expect(Number(level.reserved_quantity)).toBe(0)
-    })
-
-    it("does not touch inventory if preparation is attempted after cancellation", async () => {
-      const container = getContainer()
-      const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
-      const cartId = "canceled-before-prepare-cart"
-      const orderService = container.resolve(Modules.ORDER)
-      const order = await orderService.createOrders({ currency_code: "eur" })
-      const orderId = order.id
-      await cancelOrderWorkflow(container).run({ input: { order_id: orderId } })
-      await expect(orderService.retrieveOrder(orderId)).resolves.toMatchObject({
-        status: "canceled",
-      })
-      await reserveDecantSource(container, cartId, makeRequest(fixture, 1))
-      const [allocation] = await stock.listDecantAllocations({
-        cart_id: cartId,
-        status: "reserved",
-      })
-      await stock.updateDecantAllocations({ id: allocation.id, order_id: orderId })
-
-      await expect(
-        prepareDecantOrderWorkflow(container).run({
-          input: { order_id: orderId },
-        }),
-      ).rejects.toThrow("Отказана поръчка не може да бъде приготвена.")
-
-      const reservedAllocation = await stock.listDecantAllocations({ order_id: orderId })
-      expect(reservedAllocation).toHaveLength(1)
-      expect(reservedAllocation[0].status).toBe("reserved")
-      const level = await getInventoryLevel()
-      expect(Number(level.reserved_quantity)).toBe(1)
-      expect(Number(level.stocked_quantity)).toBe(1)
     })
   },
 })

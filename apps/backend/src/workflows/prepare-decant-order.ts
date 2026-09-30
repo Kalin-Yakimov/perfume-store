@@ -5,6 +5,7 @@ import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/frame
 import { DECANT_RESERVE_ML, DECANT_STOCK_MODULE } from "../modules/decant-stock"
 import DecantStockModuleService from "../modules/decant-stock/service"
 import { groupDecantAllocationsByBottle } from "./decant-order-allocation"
+import { isOrderCanceledForPreparation } from "./order-preparation"
 
 type PrepareDecantOrderInput = { order_id: string }
 
@@ -54,7 +55,7 @@ export async function linkDecantAllocationsForOrder(
 ) {
   const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
   const order = await retrieveOrderForPreparation(container, orderId)
-  if (order.status === "canceled" || order.canceled_at) return
+  if (isOrderCanceledForPreparation(order)) return
 
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data: links } = await query.graph({
@@ -93,7 +94,7 @@ const prepareDecantOrderStep = createStep(
     const inventory: InventoryService = container.resolve(Modules.INVENTORY)
     const locking: LockingService = container.resolve(Modules.LOCKING)
     const order = await retrieveOrderForPreparation(container, order_id)
-    if (order.status === "canceled" || order.canceled_at) {
+    if (isOrderCanceledForPreparation(order)) {
       throw invalid("Отказана поръчка не може да бъде приготвена.")
     }
 
@@ -119,7 +120,7 @@ const prepareDecantOrderStep = createStep(
 
     const result = await locking.execute(lockKeys, async () => {
       const currentOrder = await retrieveOrderForPreparation(container, order_id)
-      if (currentOrder.status === "canceled" || currentOrder.canceled_at) {
+      if (isOrderCanceledForPreparation(currentOrder)) {
         throw invalid("Отказана поръчка не може да бъде приготвена.")
       }
       const allocations = await decantStock.listDecantAllocations({
