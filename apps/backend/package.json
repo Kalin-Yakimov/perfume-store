@@ -18,6 +18,7 @@
     "dev": "medusa develop",
     "lint": "eslint .",
     "test:integration:http": "node ./scripts/run-jest.cjs integration:http",
+    "test:integration:orders": "node ./scripts/run-jest.cjs integration:orders",
     "test:integration:modules": "node ./scripts/run-jest.cjs integration:modules",
     "test:unit": "node ./scripts/run-jest.cjs unit",
     "typecheck": "tsc --noEmit -p tsconfig.json"

@@ -1,7 +1,12 @@
 const { spawnSync } = require("node:child_process")
 
 const testType = process.argv[2] || "unit"
-const allowedTypes = new Set(["unit", "integration:http", "integration:modules"])
+const allowedTypes = new Set([
+  "unit",
+  "integration:http",
+  "integration:modules",
+  "integration:orders",
+])
 
 if (!allowedTypes.has(testType)) {
   console.error(`Unsupported test type: ${testType}`)

@@ -51,3 +51,60 @@ jobs:
           COOKIE_SECRET: ci-build-only-cookie-secret-not-for-deployment
           SMTP_PASS: ci-build-only-placeholder
           DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
+
+  order-stock-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: medusa_test
+          POSTGRES_PASSWORD: medusa_test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medusa_test -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Verify pinned toolchain
+        run: |
+          node --version
+          npm --version
+          test "$(node --version)" = "v$(cat .node-version)"
+          test "$(npm --version)" = "$(node -p 'require("./package.json").packageManager.split("@")[1]')"
+
+      - name: Install dependencies
+        run: npm ci --engine-strict
+
+      - name: Test stock and order integration
+        run: npm run test:integration:orders
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USERNAME: medusa_test
+          DB_PASSWORD: medusa_test
+          DATABASE_URL: postgres://medusa_test:medusa_test@127.0.0.1:5432/postgres
+          STORE_CORS: http://localhost:8000
+          ADMIN_CORS: http://localhost:9000
+          AUTH_CORS: http://localhost:9000
+          JWT_SECRET: integration-only-jwt-secret
+          COOKIE_SECRET: integration-only-cookie-secret
+          SMTP_HOST: 127.0.0.1
+          SMTP_PORT: 1025
+          SMTP_USER: integration-test
+          SMTP_PASS: integration-only-placeholder
+          SMTP_FROM_EMAIL: test@example.invalid
+          SMTP_SECURE: "false"
