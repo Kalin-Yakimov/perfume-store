@@ -31,7 +31,7 @@ export default function PerfumeFilters({
   priceMax,
 }: {
   children?: ReactNode
-  brands: string[]
+  brands: { value: string; label: string }[]
   priceMax: number
 }) {
   const router = useRouter()
@@ -154,16 +154,36 @@ export default function PerfumeFilters({
           <div className="max-h-52 space-y-3 overflow-y-auto">
             {brands.map((brand) => (
               <label
-                key={brand}
+                key={brand.value}
                 className="flex cursor-pointer items-center gap-3 text-sm text-[#61564d]"
               >
                 <input
                   type="checkbox"
-                  checked={searchParams.getAll("brand").includes(brand)}
-                  onChange={() => toggleValue("brand", brand)}
+                  checked={searchParams
+                    .getAll("brand")
+                    .some(
+                      (value) => value === brand.value || value === brand.label,
+                    )}
+                  onChange={() =>
+                    updateParams((params) => {
+                      const selected = params.getAll("brand")
+                      const checked = selected.some(
+                        (value) =>
+                          value === brand.value || value === brand.label,
+                      )
+                      params.delete("brand")
+                      selected
+                        .filter(
+                          (value) =>
+                            value !== brand.value && value !== brand.label,
+                        )
+                        .forEach((value) => params.append("brand", value))
+                      if (!checked) params.append("brand", brand.value)
+                    })
+                  }
                   className="h-4 w-4 rounded-sm border-[#a89687] accent-[#382f29]"
                 />
-                {brand}
+                {brand.label}
               </label>
             ))}
           </div>

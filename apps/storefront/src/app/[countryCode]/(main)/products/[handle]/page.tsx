@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { listProducts } from "@lib/data/products"
+import { listProducts, listLinkedDecants } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import { isProductVisibleInCatalog } from "@lib/util/perfume-filters"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
@@ -133,17 +133,7 @@ export default async function ProductPage(props: Props) {
   const linkedDecants =
     pricedProduct.metadata?.listing_type === "decant"
       ? []
-      : await listProducts({
-          countryCode: params.countryCode,
-          queryParams: { limit: 100 },
-        }).then(({ response }) =>
-          response.products.filter(
-            (product) =>
-              product.metadata?.listing_type === "decant" &&
-              product.metadata?.decant_source_product_id === pricedProduct.id &&
-              isProductVisibleInCatalog(product),
-          ),
-        )
+      : await listLinkedDecants(pricedProduct.id, params.countryCode)
 
   const images = getImagesForVariant(pricedProduct, selectedVariantId)
 

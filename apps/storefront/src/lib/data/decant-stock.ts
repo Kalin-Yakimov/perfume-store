@@ -31,14 +31,19 @@ export async function getDecantCatalogAvailability(productIds: string[]) {
   if (!productIds.length) return null
 
   try {
-    const response = await sdk.client.fetch<AvailabilityResponse>(
-      "/store/decant-stock/availability",
-      {
-        query: { product_id: productIds },
-        cache: "no-store",
-      },
-    )
-    return response.product_availability || null
+    const ids = Array.from(new Set(productIds))
+    const availability: DecantCatalogAvailability = {}
+    for (let offset = 0; offset < ids.length; offset += 200) {
+      const response = await sdk.client.fetch<AvailabilityResponse>(
+        "/store/decant-stock/availability",
+        {
+          query: { product_id: ids.slice(offset, offset + 200) },
+          cache: "no-store",
+        },
+      )
+      Object.assign(availability, response.product_availability || {})
+    }
+    return Object.keys(availability).length ? availability : null
   } catch {
     // Catalog rendering should still work during a temporary stock API outage.
     // Product pages perform their own authoritative availability check.

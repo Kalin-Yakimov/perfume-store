@@ -13,7 +13,7 @@ type UpdateBody = {
 
 export async function PATCH(
   req: MedusaRequest<UpdateBody>,
-  res: MedusaResponse
+  res: MedusaResponse,
 ) {
   const data: UpdateBody = {}
 
@@ -47,6 +47,8 @@ export async function PATCH(
 }
 
 export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
-  await deletePerfumeTaxonomyWorkflow(req.scope).run({ input: req.params.id })
+  await deletePerfumeTaxonomyWorkflow(req.scope).run({
+    input: { id: req.params.id },
+  })
   res.status(200).json({ id: req.params.id, deleted: true })
 }

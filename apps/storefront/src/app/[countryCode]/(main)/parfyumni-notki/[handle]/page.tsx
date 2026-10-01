@@ -51,7 +51,7 @@ export default async function PerfumeNotePage({
       countryCode={countryCode}
       page={typeof query.page === "string" ? query.page : undefined}
       sortBy={query.sortBy}
-      perfumeFilters={{ ...parsePerfumeFilters(query), notes: [note.name] }}
+      perfumeFilters={{ ...parsePerfumeFilters(query), notes: [note.id] }}
     />
   )
 }

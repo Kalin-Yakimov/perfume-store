@@ -51,7 +51,7 @@ export default async function DesignerPage({
       countryCode={countryCode}
       page={typeof query.page === "string" ? query.page : undefined}
       sortBy={query.sortBy}
-      perfumeFilters={{ ...filters, brands: [designer.name] }}
+      perfumeFilters={{ ...filters, brands: [designer.id] }}
     />
   )
 }

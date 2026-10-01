@@ -53,7 +53,7 @@ export default async function PerfumeHousePage({
       sortBy={query.sortBy}
       perfumeFilters={{
         ...parsePerfumeFilters(query),
-        brands: [designer.name],
+        brands: [designer.id],
       }}
     />
   )

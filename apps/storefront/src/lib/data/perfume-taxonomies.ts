@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { cache } from "react"
 import {
   perfumeDesigners,
   perfumeNotes,
@@ -32,28 +33,28 @@ const fallbackItems: PerfumeTaxonomyItem[] = [
   })),
 ]
 
-export const listPerfumeTaxonomies = async (
-  kind?: PerfumeTaxonomyKind
-): Promise<PerfumeTaxonomyItem[]> => {
-  try {
-    const query = kind ? `?kind=${kind}` : ""
-    const { items } = await sdk.client.fetch<{
-      items: PerfumeTaxonomyItem[]
-    }>(`/store/perfume-taxonomies${query}`, {
-      cache: "no-store",
-    })
+export const listPerfumeTaxonomies = cache(
+  async (kind?: PerfumeTaxonomyKind): Promise<PerfumeTaxonomyItem[]> => {
+    try {
+      const query = kind ? `?kind=${kind}` : ""
+      const { items } = await sdk.client.fetch<{
+        items: PerfumeTaxonomyItem[]
+      }>(`/store/perfume-taxonomies${query}`, {
+        cache: "no-store",
+      })
 
-    return items.length
-      ? items
-      : fallbackItems.filter((item) => !kind || item.kind === kind)
-  } catch {
-    return fallbackItems.filter((item) => !kind || item.kind === kind)
-  }
-}
+      return items.length
+        ? items
+        : fallbackItems.filter((item) => !kind || item.kind === kind)
+    } catch {
+      return fallbackItems.filter((item) => !kind || item.kind === kind)
+    }
+  },
+)
 
 export const getPerfumeTaxonomyBySlug = async (
   kind: PerfumeTaxonomyKind,
-  slug: string
+  slug: string,
 ) => {
   const items = await listPerfumeTaxonomies(kind)
   let decodedSlug = slug
@@ -68,6 +69,6 @@ export const getPerfumeTaxonomyBySlug = async (
 
   return items.find(
     (item) =>
-      item.slug.normalize("NFC").toLocaleLowerCase("bg") === normalizedSlug
+      item.slug.normalize("NFC").toLocaleLowerCase("bg") === normalizedSlug,
   )
 }

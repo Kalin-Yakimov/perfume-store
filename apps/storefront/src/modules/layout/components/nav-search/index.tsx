@@ -5,24 +5,20 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { useParams, useRouter } from "next/navigation"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
-import { getPricesForVariant } from "@lib/util/get-product-price"
+import { convertToLocale } from "@lib/util/money"
 import { getDecantCatalogAvailability } from "@lib/data/decant-stock"
 import { getRegion } from "@lib/data/regions"
+import { isProductVisibleInCatalog } from "@lib/util/perfume-filters"
+import { resolveProductTaxonomy } from "@lib/util/product-taxonomy"
+import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
 import { FormEvent, useEffect, useRef, useState } from "react"
 
-type SearchVariant = HttpTypes.StoreProductVariant & {
-  calculated_price?: {
-    calculated_amount: number
-    original_amount: number
-    currency_code: string
-    calculated_price: { price_list_type: string }
-  }
-}
+type SearchVariant = HttpTypes.StoreProductVariant
 
 type SearchProduct = Pick<
   HttpTypes.StoreProduct,
   "id" | "title" | "handle" | "thumbnail" | "metadata"
-> & { variants?: SearchVariant[] }
+> & { variants?: SearchVariant[] | null }
 type SearchResult = SearchProduct & { unavailable: boolean }
 
 const variantVolume = (variant: SearchVariant) => {
@@ -44,14 +40,17 @@ const variantDetails = (product: SearchProduct, unavailable: boolean) => {
   const details = variants
     .map((variant) => {
       const volume = variantVolume(variant)
-      const price = getPricesForVariant(variant)
+      const amount = variant.calculated_price?.calculated_amount
+      const currency = variant.calculated_price?.currency_code
+      const price =
+        typeof amount === "number" && Number.isFinite(amount) && currency
+          ? convertToLocale({ amount, currency_code: currency })
+          : null
       if (!volume) return null
 
       return {
         volume,
-        text: unavailable
-          ? volume
-          : `${volume}${price ? ` · ${price.calculated_price}` : ""}`,
+        text: unavailable ? volume : `${volume}${price ? ` · ${price}` : ""}`,
         price:
           variant.calculated_price?.calculated_amount ??
           Number.MAX_SAFE_INTEGER,
@@ -131,25 +130,23 @@ export default function NavSearch() {
           return
         }
 
-        const response = await sdk.client.fetch<{
-          products: SearchProduct[]
-        }>("/store/products", {
-          method: "GET",
-          query: {
-            q: searchTerm,
-            limit: 100,
-            region_id: region.id,
-            fields:
-              "id,title,handle,thumbnail,+variants.title,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+variants.metadata,*variants.images,*variants.options,+metadata,+tags",
-          },
-          cache: "no-store",
+        const response = await sdk.store.product.list({
+          q: searchTerm,
+          limit: 100,
+          region_id: region.id,
+          fields:
+            "id,title,handle,thumbnail,+variants.title,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+variants.metadata,*variants.images,*variants.options,+metadata,+tags",
         })
 
-        const decantIds = response.products
+        const taxonomies = await listPerfumeTaxonomies()
+        const visibleProducts = response.products
+          .filter(isProductVisibleInCatalog)
+          .map((product) => resolveProductTaxonomy(product, taxonomies))
+        const decantIds = visibleProducts
           .filter((product) => product.metadata?.listing_type === "decant")
           .map((product) => product.id)
         const decantAvailability = await getDecantCatalogAvailability(decantIds)
-        const sorted = response.products
+        const sorted = visibleProducts
           .map((product) => ({
             product,
             unavailable: productIsUnavailable(product, decantAvailability),

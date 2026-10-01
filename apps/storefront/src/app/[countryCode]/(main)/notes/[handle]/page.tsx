@@ -48,7 +48,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
       countryCode={countryCode}
       page={typeof query.page === "string" ? query.page : undefined}
       sortBy={query.sortBy}
-      perfumeFilters={{ ...filters, notes: [note.name] }}
+      perfumeFilters={{ ...filters, notes: [note.id] }}
     />
   )
 }

@@ -8,7 +8,7 @@ import SortProducts, { SortOptions } from "./sort-products"
 
 type RefinementListProps = {
   sortBy: SortOptions
-  brands?: string[]
+  brands?: { value: string; label: string }[]
   priceMax?: number
   search?: boolean
   hideOptionsPicker?: boolean

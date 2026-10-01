@@ -15,6 +15,8 @@ import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-g
 import RefinementList from "@modules/store/components/refinement-list"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { HttpTypes } from "@medusajs/types"
+import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
+import { catalogBrandOptions } from "@lib/util/product-taxonomy"
 
 import PaginatedProducts from "./paginated-products"
 
@@ -53,17 +55,22 @@ const StoreTemplate = async ({
     ...(optionValueIds?.length ? { option_value_id: optionValueIds } : {}),
   }
   const products = await listAllProducts({ queryParams, countryCode })
+  const taxonomies = await listPerfumeTaxonomies()
   const catalogProducts = filterPerfumeProducts(
     products,
     undefined,
     listingType,
+    taxonomies,
   )
   const filteredProducts = filterPerfumeProducts(
     products,
     perfumeFilters,
     listingType,
+    taxonomies,
   )
-  const unavailableIds = new Set(await getUnavailableProductIds(filteredProducts))
+  const unavailableIds = new Set(
+    await getUnavailableProductIds(filteredProducts),
+  )
   const sortedByPreference = sortProducts(filteredProducts, sort)
   const sortedProducts = [
     ...sortedByPreference.filter((product) => !unavailableIds.has(product.id)),
@@ -71,17 +78,7 @@ const StoreTemplate = async ({
   ]
   const start = (pageNumber - 1) * 40
   const pageProducts = sortedProducts.slice(start, start + 40)
-  const brands = Array.from(
-    new Set(
-      catalogProducts.flatMap((product) => {
-        const brand =
-          product.metadata?.brand ??
-          product.metadata?.designer ??
-          product.collection?.title
-        return typeof brand === "string" && brand.trim() ? [brand.trim()] : []
-      }),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "bg"))
+  const brands = catalogBrandOptions(catalogProducts, taxonomies)
   const highestCatalogPrice = catalogProducts.reduce((highest, product) => {
     const price = getProductPrice({ product }).cheapestPrice
       ?.calculated_price_number

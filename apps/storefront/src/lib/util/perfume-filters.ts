@@ -2,6 +2,8 @@ import { HttpTypes } from "@medusajs/types"
 import { getPerfumeProfile } from "@modules/products/data/perfume-profiles"
 
 import { getProductPrice } from "./get-product-price"
+import { productTaxonomyProfile } from "./product-taxonomy"
+import type { PerfumeTaxonomyItem } from "@lib/data/perfume-taxonomies"
 
 export type PerfumeFilters = {
   genders: string[]
@@ -32,7 +34,7 @@ const toPrice = (value: string | string[] | undefined) => {
 }
 
 export const parsePerfumeFilters = (
-  searchParams: SearchParams
+  searchParams: SearchParams,
 ): PerfumeFilters => ({
   genders: toArray(searchParams.gender),
   brands: toArray(searchParams.brand),
@@ -57,15 +59,11 @@ const splitValues = (value: unknown): string[] => {
     .filter(Boolean)
 }
 
-const fieldValues = (
-  product: HttpTypes.StoreProduct,
-  keys: string[]
-) => {
+const fieldValues = (product: HttpTypes.StoreProduct, keys: string[]) => {
   const metadataValues = keys.flatMap((key) =>
-    splitValues(product.metadata?.[key])
+    splitValues(product.metadata?.[key]),
   )
-  const tagValues =
-    product.tags?.flatMap((tag) => splitValues(tag.value)) ?? []
+  const tagValues = product.tags?.flatMap((tag) => splitValues(tag.value)) ?? []
 
   return [...metadataValues, ...tagValues]
 }
@@ -76,12 +74,12 @@ const matchesAny = (productValues: string[], selected: string[]) => {
   }
 
   return selected.some((selectedValue) =>
-    productValues.includes(selectedValue.toLocaleLowerCase())
+    productValues.includes(selectedValue.toLocaleLowerCase()),
   )
 }
 
 export const isProductVisibleInCatalog = (
-  product: HttpTypes.StoreProduct
+  product: Pick<HttpTypes.StoreProduct, "metadata">,
 ) =>
   product.metadata?.catalog_visible === true ||
   // The original local demo records predate the visibility switch. Keeping
@@ -92,7 +90,8 @@ export const isProductVisibleInCatalog = (
 export const filterPerfumeProducts = (
   products: HttpTypes.StoreProduct[],
   filters?: PerfumeFilters,
-  listingType?: PerfumeListingType
+  listingType?: PerfumeListingType,
+  taxonomyItems: PerfumeTaxonomyItem[] = [],
 ) => {
   const activeFilters: PerfumeFilters = filters || {
     genders: [],
@@ -119,6 +118,11 @@ export const filterPerfumeProducts = (
       product.title.toLocaleLowerCase(),
     ]
     const profile = getPerfumeProfile(product.handle)
+    const storedProfile = productTaxonomyProfile(product)
+    const noteKeys = ["top_note_ids", "heart_note_ids", "base_note_ids"]
+    const noteIds = noteKeys.flatMap((key) =>
+      Array.isArray(storedProfile[key]) ? (storedProfile[key] as string[]) : [],
+    )
     const noteValues = [
       ...fieldValues(product, [
         "notes",
@@ -140,14 +144,43 @@ export const filterPerfumeProducts = (
 
     const matchesGender = matchesAny(genderValues, activeFilters.genders)
     const matchesSeason = matchesAny(seasonValues, activeFilters.seasons)
+    const taxonomyMatch = (kind: "designer" | "note", selected: string) =>
+      taxonomyItems.find(
+        (item) =>
+          item.kind === kind &&
+          (item.id === selected ||
+            item.name.toLocaleLowerCase("bg") ===
+              selected.toLocaleLowerCase("bg")),
+      )
     const matchesBrand =
       !activeFilters.brands.length ||
-      activeFilters.brands.some((brand) =>
-        brandValues.some((value) =>
-          value.includes(brand.toLocaleLowerCase())
+      activeFilters.brands.some((brand) => {
+        const taxonomy = taxonomyMatch("designer", brand)
+        if (
+          typeof storedProfile.designer_id === "string" &&
+          storedProfile.designer_id
+        ) {
+          if (taxonomy || brand === storedProfile.designer_id)
+            return storedProfile.designer_id === (taxonomy?.id || brand)
+        }
+        const label = taxonomy?.name || brand
+        return brandValues.some((value) =>
+          value.includes(label.toLocaleLowerCase()),
         )
-      )
-    const matchesNotes = matchesAny(noteValues, activeFilters.notes)
+      })
+    const matchesNotes =
+      !activeFilters.notes.length ||
+      activeFilters.notes.some((note) => {
+        const taxonomy = taxonomyMatch("note", note)
+        if (
+          noteKeys.some((key) =>
+            Object.prototype.hasOwnProperty.call(storedProfile, key),
+          )
+        ) {
+          return noteIds.includes(taxonomy?.id || note)
+        }
+        return matchesAny(noteValues, [taxonomy?.name || note])
+      })
     const matchesMinimum =
       activeFilters.minPrice === undefined ||
       (price !== undefined && price >= activeFilters.minPrice)
