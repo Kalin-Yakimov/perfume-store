@@ -12,7 +12,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { useEffect, useState } from "react"
-import { formatVolumeForDisplay } from "@lib/util/format-volume-for-display"
+import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { useRouter } from "next/navigation"
 
 type ItemProps = {
@@ -27,6 +27,10 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   const [quantity, setQuantity] = useState(item.quantity)
   const [limit, setLimit] = useState<number | null | undefined>(undefined)
   const router = useRouter()
+  const title = formatProductTitle(
+    item.product_title || item.title || "",
+    item.product?.metadata?.listing_type === "decant",
+  )
 
   useEffect(() => {
     if (type !== "full") return
@@ -87,8 +91,15 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   }
 
   return (
-    <Table.Row className="w-full" data-testid="product-row">
-      <Table.Cell className="!pl-0 p-4 w-24">
+    <Table.Row
+      className={clx("w-full", {
+        "grid grid-cols-[64px_minmax(0,1fr)] gap-x-3 py-4 small:table-row small:py-0": type === "full",
+      })}
+      data-testid="product-row"
+    >
+      <Table.Cell className={clx("!pl-0 p-4 w-24", {
+        "row-span-2 !w-auto !p-0 small:!w-24 small:!py-4 small:!pr-4": type === "full",
+      })}>
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
           className={clx("flex", {
@@ -100,22 +111,25 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             thumbnail={item.thumbnail}
             images={item.variant?.product?.images}
             size="square"
+            imageAlt={title}
           />
         </LocalizedClientLink>
       </Table.Cell>
 
-      <Table.Cell className="text-left">
+      <Table.Cell className={clx("text-left", {
+        "min-w-0 !p-0 small:!p-4": type === "full",
+      })}>
         <Text
           className="txt-medium-plus text-ui-fg-base"
           data-testid="product-title"
         >
-          {formatVolumeForDisplay(item.product_title || "")}
+          {title}
         </Text>
         <LineItemOptions variant={item.variant} data-testid="product-variant" />
       </Table.Cell>
 
       {type === "full" && (
-        <Table.Cell>
+        <Table.Cell className="col-start-2 !px-0 !pb-0 !pt-3 small:!p-4">
           <div className="flex items-center gap-2">
             <DeleteButton id={item.id} data-testid="product-delete-button" />
             <div
@@ -168,7 +182,9 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </Table.Cell>
       )}
 
-      <Table.Cell className="!pr-0">
+      <Table.Cell className={clx("!pr-0", {
+        "col-start-2 !px-0 !pb-0 !pt-3 small:!py-4 small:!pl-4": type === "full",
+      })}>
         <span
           className={clx("!pr-0", {
             "flex flex-col items-end h-full justify-center": type === "preview",

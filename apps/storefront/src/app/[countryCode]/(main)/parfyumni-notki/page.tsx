@@ -7,6 +7,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 export const metadata: Metadata = {
   title: "Парфюмни нотки",
   description: "Изберете аромат според любимите си парфюмни нотки.",
+  alternates: { canonical: "/parfyumni-notki" },
 }
 
 export default async function PerfumeNotesPage() {

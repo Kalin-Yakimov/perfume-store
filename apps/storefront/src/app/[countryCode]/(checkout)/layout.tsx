@@ -37,9 +37,9 @@ export default function CheckoutLayout({
           <div className="flex-1 basis-0" />
         </nav>
       </header>
-      <div className="relative flex-1" data-testid="checkout-container">
+      <main className="relative flex-1" data-testid="checkout-container">
         {children}
-      </div>
+      </main>
       <Footer />
     </div>
   )

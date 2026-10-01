@@ -86,13 +86,16 @@ const ProductTemplate = async ({
   const perfumeNotes = taxonomyItems.filter((item) => item.kind === "note")
 
   return (
-    <main className="bg-[#fbf9f6]">
+    <div className="bg-[#fbf9f6]">
       <section
         className="content-container grid gap-7 py-7 small:grid-cols-[1.05fr_0.95fr] small:items-start small:gap-10 small:py-10"
         data-testid="product-container"
       >
         <div className="min-w-0">
-          <ImageGallery images={images} />
+          <ImageGallery
+            images={images}
+            productTitle={formatProductTitle(product.title, isDecant)}
+          />
         </div>
 
         <div>
@@ -226,7 +229,7 @@ const ProductTemplate = async ({
           taxonomyItems={taxonomyItems}
         />
       </Suspense>
-    </main>
+    </div>
   )
 }
 

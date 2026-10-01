@@ -33,9 +33,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="bg" data-mode="light">
+    <html lang="bg" data-mode="light" data-scroll-behavior="smooth">
       <body className="bg-[#fbf9f6] text-[#211d19] antialiased">
-        <main className="relative">{props.children}</main>
+        <div className="relative">{props.children}</div>
       </body>
     </html>
   )

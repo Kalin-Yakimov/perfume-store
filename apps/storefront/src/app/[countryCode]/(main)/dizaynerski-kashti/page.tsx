@@ -7,6 +7,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 export const metadata: Metadata = {
   title: "Дизайнерски къщи",
   description: "Открийте парфюми от утвърдени и нишови парфюмни къщи.",
+  alternates: { canonical: "/dizaynerski-kashti" },
 }
 
 export default async function PerfumeHousesPage() {

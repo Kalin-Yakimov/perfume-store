@@ -56,12 +56,14 @@ export default async function ProductPreview({
   isFeatured,
   compact = false,
   unavailable = false,
+  priority = false,
   region: _region,
 }: {
   product: HttpTypes.StoreProduct
   isFeatured?: boolean
   compact?: boolean
   unavailable?: boolean
+  priority?: boolean
   region: HttpTypes.StoreRegion
 }) {
   // const pricedProduct = await listProducts({
@@ -110,9 +112,13 @@ export default async function ProductPreview({
             <Thumbnail
               thumbnail={product.thumbnail}
               images={product.images}
-              imageAlt={[brand, titleWithoutBrand].filter(Boolean).join(" ")}
+              imageAlt={formatProductTitle(
+                [brand, titleWithoutBrand].filter(Boolean).join(" "),
+                product.metadata?.listing_type === "decant",
+              )}
               size="catalog"
               isFeatured={isFeatured}
+              priority={priority}
               className={unavailable ? "grayscale opacity-65" : undefined}
             />
             {unavailable && (

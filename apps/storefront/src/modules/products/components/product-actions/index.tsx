@@ -257,6 +257,7 @@ export default function ProductActions({
         quantity: quantityValue,
         countryCode,
       })
+      router.refresh()
       setQuantity("1")
       await refreshDecantAvailability()
     } catch (error) {

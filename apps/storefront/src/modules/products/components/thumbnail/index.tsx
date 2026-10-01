@@ -1,6 +1,7 @@
 import { Container, clx } from "@modules/common/components/ui"
 import Image from "next/image"
 import React from "react"
+import { canOptimizeImage } from "@lib/util/image-optimization"
 
 import PlaceholderImage from "@modules/common/icons/placeholder-image"
 
@@ -10,6 +11,7 @@ type ThumbnailProps = {
   imageAlt?: string
   size?: "small" | "medium" | "large" | "full" | "catalog" | "square"
   isFeatured?: boolean
+  priority?: boolean
   className?: string
   "data-testid"?: string
 }
@@ -20,6 +22,7 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   imageAlt,
   size = "small",
   isFeatured,
+  priority = false,
   className,
   "data-testid": dataTestid,
 }) => {
@@ -44,7 +47,12 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
       )}
       data-testid={dataTestid}
     >
-      <ImageOrPlaceholder image={initialImage} size={size} alt={imageAlt} />
+      <ImageOrPlaceholder
+        image={initialImage}
+        size={size}
+        alt={imageAlt}
+        priority={priority}
+      />
     </Container>
   )
 }
@@ -53,15 +61,27 @@ const ImageOrPlaceholder = ({
   image,
   size,
   alt,
-}: Pick<ThumbnailProps, "size"> & { image?: string; alt?: string }) => {
+  priority,
+}: Pick<ThumbnailProps, "size" | "priority"> & { image?: string; alt?: string }) => {
+  const imageSizes = {
+    small: "180px",
+    medium: "290px",
+    large: "440px",
+    full: "(max-width: 640px) 92vw, 460px",
+    catalog: "(max-width: 639px) 46vw, 22vw",
+    square: "96px",
+  }[size || "small"]
+
   return image ? (
     <Image
       src={image}
       alt={alt || "Изображение на продукт"}
       className="absolute inset-0 object-cover object-center"
       draggable={false}
-      quality={50}
-      sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
+      unoptimized={!canOptimizeImage(image)}
+      quality={60}
+      priority={priority}
+      sizes={imageSizes}
       fill
     />
   ) : (

@@ -5,12 +5,6 @@ import { parsePerfumeFilters } from "@lib/util/perfume-filters"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
 
-export const metadata: Metadata = {
-  title: "Всички аромати",
-  description: "Разгледайте цялата ни селекция от парфюми.",
-  alternates: { canonical: "/parfyumi" },
-}
-
 type StorePageSearchParams = Record<string, string | string[] | undefined> & {
   sortBy?: SortOptions
   page?: string
@@ -21,6 +15,18 @@ type StorePageSearchParams = Record<string, string | string[] | undefined> & {
 type Params = {
   searchParams: Promise<StorePageSearchParams>
   params: Promise<{ countryCode: string }>
+}
+
+export async function generateMetadata({ searchParams }: Params): Promise<Metadata> {
+  const { q } = await searchParams
+  const isSearch = (Array.isArray(q) ? q : [q]).some((value) => value?.trim())
+
+  return {
+    title: isSearch ? "Търсене на парфюми" : "Всички аромати",
+    description: "Разгледайте цялата ни селекция от парфюми.",
+    alternates: { canonical: "/parfyumi" },
+    robots: { index: !isSearch, follow: true },
+  }
 }
 
 export default async function PerfumeCatalogPage(props: Params) {

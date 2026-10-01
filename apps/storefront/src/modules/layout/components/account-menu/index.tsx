@@ -41,7 +41,7 @@ export default function AccountMenu({
           <circle cx="12" cy="8" r="3.5" />
           <path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" />
         </svg>
-        <span className="truncate text-xs">
+        <span className="hidden truncate text-xs xsmall:inline">
           {customer ? displayName : "Вход"}
         </span>
         <svg
@@ -50,7 +50,7 @@ export default function AccountMenu({
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          className="h-3 w-3 shrink-0 transition group-open:rotate-180"
+          className="hidden h-3 w-3 shrink-0 transition group-open:rotate-180 xsmall:block"
         >
           <path d="m5 7.5 5 5 5-5" />
         </svg>

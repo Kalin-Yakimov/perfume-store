@@ -15,7 +15,7 @@ import LineItemPrice from "@modules/common/components/line-item-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
-import { formatVolumeForDisplay } from "@lib/util/format-volume-for-display"
+import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { Fragment, useEffect, useRef, useState } from "react"
 
 const CartDropdown = ({
@@ -68,11 +68,12 @@ const CartDropdown = ({
 
   // open cart dropdown when modifying the cart items, but only if we're not on the cart page
   useEffect(() => {
-    if (itemRef.current !== totalItems && !pathname.includes("/cart")) {
+    if (itemRef.current !== totalItems && !/\/(cart|koshnitsa)(\/|$)/.test(pathname)) {
       timedOpen()
     }
+    itemRef.current = totalItems
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalItems, itemRef.current])
+  }, [totalItems, pathname])
 
   return (
     <div
@@ -86,6 +87,7 @@ const CartDropdown = ({
             className="inline-flex h-10 items-center gap-2 rounded-full px-2 transition hover:bg-[#eee8df] small:px-3"
             href="/cart"
             data-testid="nav-cart-link"
+            aria-label={`Кошница (${totalItems})`}
           >
             <svg
               aria-hidden="true"
@@ -144,6 +146,7 @@ const CartDropdown = ({
                             thumbnail={item.thumbnail}
                             images={item.variant?.product?.images}
                             size="square"
+                            imageAlt={formatProductTitle(item.title, item.product?.metadata?.listing_type === "decant")}
                           />
                         </LocalizedClientLink>
                         <div className="flex flex-col justify-between flex-1">
@@ -155,7 +158,7 @@ const CartDropdown = ({
                                     href={`/products/${item.product_handle}`}
                                     data-testid="product-link"
                                   >
-                                    {formatVolumeForDisplay(item.title)}
+                                    {formatProductTitle(item.title, item.product?.metadata?.listing_type === "decant")}
                                   </LocalizedClientLink>
                                 </h3>
                                 <LineItemOptions

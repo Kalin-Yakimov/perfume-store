@@ -38,7 +38,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
           shippingOptions={shippingOptions}
         />
       )}
-      <div className="flex flex-1 flex-col">{props.children}</div>
+      <main className="flex flex-1 flex-col">{props.children}</main>
       <Footer />
     </div>
   )

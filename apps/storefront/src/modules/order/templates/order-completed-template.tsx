@@ -21,7 +21,7 @@ export default async function OrderCompletedTemplate({
   const isOnboarding = cookies.get("_medusa_onboarding")?.value === "true"
 
   return (
-    <main className="flex min-h-[60vh] flex-col bg-[#fbf9f6]">
+    <div className="flex min-h-[60vh] flex-col bg-[#fbf9f6]">
       <section className="border-b border-[#ded7cf] bg-[#eee8df] py-8 small:py-10">
         <div className="content-container max-w-5xl">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#826c5a]">
@@ -59,6 +59,6 @@ export default async function OrderCompletedTemplate({
           <Help />
         </div>
       </div>
-    </main>
+    </div>
   )
 }

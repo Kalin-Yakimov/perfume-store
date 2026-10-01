@@ -10,7 +10,7 @@ import {
   PerfumeListingType,
 } from "@lib/util/perfume-filters"
 import { sortProducts } from "@lib/util/sort-products"
-import { getDecantCatalogAvailability } from "@lib/data/decant-stock"
+import { getUnavailableProductIds } from "@lib/data/product-availability"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import RefinementList from "@modules/store/components/refinement-list"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
@@ -63,29 +63,7 @@ const StoreTemplate = async ({
     perfumeFilters,
     listingType,
   )
-  const decantIds = filteredProducts
-    .filter((product) => product.metadata?.listing_type === "decant")
-    .map((product) => product.id)
-    .filter((id): id is string => Boolean(id))
-  const decantAvailability = await getDecantCatalogAvailability(decantIds)
-  const unavailableIds = new Set(
-    filteredProducts
-      .filter((product) => {
-        if (product.metadata?.listing_type === "decant") {
-          // If the stock check is temporarily unavailable, leave the item in
-          // its normal position; the product page still blocks an invalid sale.
-          return decantAvailability?.[product.id] === false
-        }
-
-        return !(product.variants || []).some(
-          (variant) =>
-            !variant.manage_inventory ||
-            variant.allow_backorder ||
-            (variant.inventory_quantity || 0) > 0,
-        )
-      })
-      .map((product) => product.id),
-  )
+  const unavailableIds = new Set(await getUnavailableProductIds(filteredProducts))
   const sortedByPreference = sortProducts(filteredProducts, sort)
   const sortedProducts = [
     ...sortedByPreference.filter((product) => !unavailableIds.has(product.id)),

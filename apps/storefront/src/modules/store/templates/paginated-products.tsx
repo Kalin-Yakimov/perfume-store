@@ -94,6 +94,7 @@ export default async function PaginatedProducts({
     })
     products = result.response.products
     count = result.response.count
+    unavailableProductIds = result.response.unavailableProductIds
   }
 
   const totalPages = Math.ceil(count / PRODUCT_LIMIT)
@@ -106,7 +107,7 @@ export default async function PaginatedProducts({
           className="grid w-full grid-cols-2 gap-4 small:grid-cols-4"
           data-testid="products-list"
         >
-          {products.map((p) => {
+          {products.map((p, index) => {
             return (
               <li
                 key={p.id}
@@ -116,6 +117,7 @@ export default async function PaginatedProducts({
                   product={p}
                   region={region}
                   unavailable={unavailable.has(p.id)}
+                  priority={index < 2}
                 />
               </li>
             )

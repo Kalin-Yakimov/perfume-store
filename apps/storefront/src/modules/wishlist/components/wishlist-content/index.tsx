@@ -9,6 +9,7 @@ import {
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
+import { canOptimizeImage } from "@lib/util/image-optimization"
 import { useEffect, useState } from "react"
 
 export default function WishlistContent() {
@@ -89,6 +90,7 @@ export default function WishlistContent() {
                       src={item.thumbnail}
                       alt={title}
                       fill
+                      unoptimized={!canOptimizeImage(item.thumbnail)}
                       className={`object-cover ${unavailable ? "grayscale opacity-65" : ""}`}
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                     />

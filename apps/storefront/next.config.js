@@ -7,6 +7,10 @@ checkEnvVariables()
  */
 const S3_HOSTNAME = process.env.MEDUSA_CLOUD_S3_HOSTNAME
 const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
+const MEDUSA_BACKEND_URL =
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+const MEDUSA_IMAGE_ORIGIN = new URL(MEDUSA_BACKEND_URL)
+const MEDUSA_IMAGE_PATH = MEDUSA_IMAGE_ORIGIN.pathname.replace(/\/$/, "")
 
 /**
  * @type {import('next').NextConfig}
@@ -64,11 +68,13 @@ const nextConfig = {
     ]
   },
   images: {
-    unoptimized: true,
+    qualities: [60, 75],
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "localhost",
+        protocol: MEDUSA_IMAGE_ORIGIN.protocol.slice(0, -1),
+        hostname: MEDUSA_IMAGE_ORIGIN.hostname,
+        port: MEDUSA_IMAGE_ORIGIN.port,
+        pathname: `${MEDUSA_IMAGE_PATH}/**`,
       },
       {
         protocol: "https",

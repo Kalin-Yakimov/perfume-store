@@ -5,12 +5,6 @@ import { parseOptionValueIds } from "@lib/util/product-option-filters"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
 
-export const metadata: Metadata = {
-  title: "Парфюмни отливки",
-  description: "Парфюмни отливки в разфасовки от 5 мл и 10 мл.",
-  alternates: { canonical: "/otlivki" },
-}
-
 type PageSearchParams = Record<string, string | string[] | undefined> & {
   sortBy?: SortOptions
   page?: string
@@ -21,6 +15,18 @@ type PageSearchParams = Record<string, string | string[] | undefined> & {
 type Params = {
   searchParams: Promise<PageSearchParams>
   params: Promise<{ countryCode: string }>
+}
+
+export async function generateMetadata({ searchParams }: Params): Promise<Metadata> {
+  const { q } = await searchParams
+  const isSearch = (Array.isArray(q) ? q : [q]).some((value) => value?.trim())
+
+  return {
+    title: isSearch ? "Търсене на отливки" : "Парфюмни отливки",
+    description: "Открийте любимия си аромат с парфюмни отливки в различни разфасовки.",
+    alternates: { canonical: "/otlivki" },
+    robots: { index: !isSearch, follow: true },
+  }
 }
 
 export default async function DecantsCatalogPage(props: Params) {

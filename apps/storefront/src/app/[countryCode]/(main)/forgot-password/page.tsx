@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="flex min-h-[50vh] items-center justify-center bg-[#fbf9f6] px-4 py-12 small:py-16">
+    <div className="flex min-h-[50vh] items-center justify-center bg-[#fbf9f6] px-4 py-12 small:py-16">
       <ForgotPassword />
-    </main>
+    </div>
   )
 }

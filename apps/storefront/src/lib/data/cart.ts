@@ -171,7 +171,6 @@ export async function updateLineItem({
     body: {
       cart_id: cartId,
       line_item_id: lineId,
-      variant_id: "update",
       quantity,
     },
     headers,
@@ -244,7 +243,6 @@ export async function getCartLineItemQuantityLimit(
         body: {
           cart_id: cart.id,
           line_item_id: lineId,
-          variant_id: variant.id,
           quantity,
         },
         headers,

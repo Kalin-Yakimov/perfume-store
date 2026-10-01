@@ -98,7 +98,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   product.metadata?.listing_type === "decant",
                 )}
               </span>
-              <span>—</span>
+              {inStock && selectedPrice && <span>—</span>}
               {inStock && selectedPrice ? (
                 <div className="flex items-end gap-x-2 text-ui-fg-base">
                   {selectedPrice.price_type === "sale" && (
@@ -118,7 +118,13 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   </span>
                 </div>
               ) : (
-                <div></div>
+                <span className="text-sm text-[#806e60]">
+                  {stockLoading
+                    ? "Проверка на наличността…"
+                    : stockError
+                      ? "Наличността е недостъпна"
+                      : "Изчерпан"}
+                </span>
               )}
             </div>
             <QuantitySelector
@@ -205,6 +211,8 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                 >
                   <div className="w-full flex justify-end pr-6">
                     <button
+                      type="button"
+                      aria-label="Затвори избора на разфасовка"
                       onClick={close}
                       className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
                       data-testid="close-modal-button"

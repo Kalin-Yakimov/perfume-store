@@ -1,6 +1,7 @@
 import { listAllProducts } from "@lib/data/products"
 import { PerfumeTaxonomyItem } from "@lib/data/perfume-taxonomies"
 import { filterPerfumeProducts } from "@lib/util/perfume-filters"
+import { isBottleAvailable } from "@lib/util/product-stock"
 import { HttpTypes } from "@medusajs/types"
 import {
   getPerfumeProfile,
@@ -121,6 +122,7 @@ export default async function RelatedProducts({
 
       return {
         product: candidate,
+        unavailable: !isBottleAvailable(candidate),
         scentMatch:
           sharedCount(allNotes(currentProfile), allNotes(candidateProfile)) >
             0 ||
@@ -138,6 +140,7 @@ export default async function RelatedProducts({
     })
     .sort(
       (a, b) =>
+        Number(a.unavailable) - Number(b.unavailable) ||
         b.score - a.score ||
         String(b.product.created_at || "").localeCompare(
           String(a.product.created_at || ""),
@@ -158,12 +161,13 @@ export default async function RelatedProducts({
       <RelatedProductsCarousel
         hasSimilarProducts={recommendations[0].scentMatch}
       >
-        {recommendations.map(({ product: recommendation }) => (
+        {recommendations.map(({ product: recommendation, unavailable }) => (
           <ProductPreview
             key={recommendation.id}
             product={recommendation}
             region={region}
             compact
+            unavailable={unavailable}
           />
         ))}
       </RelatedProductsCarousel>

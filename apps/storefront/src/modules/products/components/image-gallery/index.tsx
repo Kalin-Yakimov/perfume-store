@@ -1,12 +1,14 @@
 import { HttpTypes } from "@medusajs/types"
 import { Container } from "@modules/common/components/ui"
 import Image from "next/image"
+import { canOptimizeImage } from "@lib/util/image-optimization"
 
 type ImageGalleryProps = {
   images: HttpTypes.StoreProductImage[]
+  productTitle: string
 }
 
-const ImageGallery = ({ images }: ImageGalleryProps) => {
+const ImageGallery = ({ images, productTitle }: ImageGalleryProps) => {
   return (
     <div className="flex items-start relative">
       <div className="mx-auto flex w-full max-w-[460px] flex-col gap-y-4 small:pr-5">
@@ -20,11 +22,12 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
               {!!image.url && (
                 <Image
                   src={image.url}
-                  priority={index <= 2 ? true : false}
+                  priority={index === 0}
+                  unoptimized={!canOptimizeImage(image.url)}
                   className="absolute inset-0 rounded-rounded"
-                  alt={`Product image ${index + 1}`}
+                  alt={`${productTitle} — снимка ${index + 1}`}
                   fill
-                  sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
+                  sizes="(max-width: 512px) calc(100vw - 48px), 460px"
                   style={{
                     objectFit: "cover",
                   }}

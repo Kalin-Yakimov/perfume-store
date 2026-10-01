@@ -2,7 +2,6 @@ import { Suspense } from "react"
 
 import { listLocales } from "@lib/data/locales"
 import { getLocale } from "@lib/data/locale-actions"
-import { listRegions } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import AccountMenu from "@modules/layout/components/account-menu"
@@ -23,8 +22,7 @@ export default async function Nav({
 }: {
   customer: HttpTypes.StoreCustomer | null
 }) {
-  const [regions, locales, currentLocale] = await Promise.all([
-    listRegions().then((regions: HttpTypes.StoreRegion[]) => regions),
+  const [locales, currentLocale] = await Promise.all([
     listLocales(),
     getLocale(),
   ])
@@ -38,11 +36,10 @@ export default async function Nav({
       <header className="border-b border-[#ded7cf]">
         <div className="bg-[#e5d8cc]">
           <div className="content-container">
-            <div className="flex min-h-[72px] items-center gap-4 small:grid small:grid-cols-[190px_minmax(300px,560px)_300px] small:justify-between">
-              <div className="flex min-w-0 items-center gap-4">
+            <div className="flex min-h-[72px] items-center gap-2 small:gap-4 small:grid small:grid-cols-[190px_minmax(300px,560px)_300px] small:justify-between">
+              <div className="flex min-w-0 items-center gap-2 small:gap-4">
                 <div className="h-[72px] small:hidden">
                   <SideMenu
-                    regions={regions}
                     locales={locales}
                     currentLocale={currentLocale}
                   />
@@ -52,7 +49,7 @@ export default async function Nav({
                   className="min-w-0 text-[#211d19]"
                   data-testid="nav-store-link"
                 >
-                  <span className="font-display block truncate text-lg tracking-[0.17em] small:text-xl small:tracking-[0.2em]">
+                  <span className="font-display block truncate text-base tracking-[0.1em] xsmall:text-lg xsmall:tracking-[0.17em] small:text-xl small:tracking-[0.2em]">
                     PARFUMERIE
                   </span>
                   <span className="mt-0.5 hidden text-[7px] uppercase tracking-[0.34em] text-[#867568] small:block">
@@ -65,7 +62,7 @@ export default async function Nav({
                 <NavSearch />
               </div>
 
-              <div className="ml-auto flex items-center justify-end gap-3 text-xs text-[#51483f] small:ml-0 medium:gap-6">
+              <div className="ml-auto flex shrink-0 items-center justify-end gap-1 text-xs text-[#51483f] xsmall:gap-3 small:ml-0 medium:gap-6">
                 <WishlistLink />
                 <Suspense
                   fallback={

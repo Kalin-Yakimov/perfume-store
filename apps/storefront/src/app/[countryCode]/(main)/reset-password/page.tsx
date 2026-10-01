@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="flex min-h-[50vh] items-center justify-center bg-[#fbf9f6] px-4 py-12 small:py-16">
+    <div className="flex min-h-[50vh] items-center justify-center bg-[#fbf9f6] px-4 py-12 small:py-16">
       <Suspense fallback={<p className="text-sm text-[#71665c]">Зареждане…</p>}>
         <ResetPassword />
       </Suspense>
-    </main>
+    </div>
   )
 }

@@ -13,6 +13,7 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import { getAuthHeaders } from "./cookies"
 import { getPublicCacheOptions } from "./cache-policy"
 import { getRegion, retrieveRegion } from "./regions"
+import { getUnavailableProductIds } from "./product-availability"
 
 type ProductListQueryParams = (HttpTypes.FindParams &
   HttpTypes.StoreProductListParams) & {
@@ -143,7 +144,7 @@ export const listAllProducts = async ({
  * It will then return the paginated products based on the page and limit parameters.
  */
 export const listProductsWithSort = async ({
-  page = 0,
+  page = 1,
   queryParams,
   sortBy = "created_at",
   countryCode,
@@ -159,7 +160,11 @@ export const listProductsWithSort = async ({
   perfumeFilters?: PerfumeFilters
   listingType?: PerfumeListingType
 }): Promise<{
-  response: { products: HttpTypes.StoreProduct[]; count: number }
+  response: {
+    products: HttpTypes.StoreProduct[]
+    count: number
+    unavailableProductIds: string[]
+  }
   nextPage: number | null
   queryParams?: ProductListQueryParams
 }> => {
@@ -181,7 +186,13 @@ export const listProductsWithSort = async ({
     perfumeFilters,
     listingType,
   )
-  const sortedProducts = sortProducts(filteredProducts, sortBy)
+  const unavailableProductIds = await getUnavailableProductIds(filteredProducts)
+  const unavailableIds = new Set(unavailableProductIds)
+  const sortedByPreference = sortProducts(filteredProducts, sortBy)
+  const sortedProducts = [
+    ...sortedByPreference.filter((product) => !unavailableIds.has(product.id)),
+    ...sortedByPreference.filter((product) => unavailableIds.has(product.id)),
+  ]
 
   const pageParam = (page - 1) * limit
 
@@ -195,6 +206,7 @@ export const listProductsWithSort = async ({
     response: {
       products: paginatedProducts,
       count: filteredCount,
+      unavailableProductIds,
     },
     nextPage,
     queryParams,

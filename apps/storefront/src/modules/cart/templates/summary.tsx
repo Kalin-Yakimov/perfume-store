@@ -13,13 +13,16 @@ type SummaryProps = {
 }
 
 function getCheckoutStep(cart: HttpTypes.StoreCart) {
-  if (!cart?.shipping_address?.address_1 || !cart.email) {
-    return "address"
-  } else if (cart?.shipping_methods?.length === 0) {
+  if (!cart.shipping_methods?.length) {
     return "delivery"
-  } else {
+  }
+  if (!cart.payment_collection?.payment_sessions?.some((session) => session.status === "pending")) {
     return "payment"
   }
+  if (!cart.shipping_address?.first_name || !cart.email) {
+    return "address"
+  }
+  return "review"
 }
 
 const Summary = ({ cart }: SummaryProps) => {

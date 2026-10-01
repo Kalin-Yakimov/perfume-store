@@ -21,9 +21,9 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
           Продукти
         </Heading>
       </div>
-      <div className="overflow-x-auto">
-        <Table className="min-w-[520px] small:min-w-0">
-          <Table.Header className="border-t-0">
+      <div>
+        <Table className="w-full">
+          <Table.Header className="hidden border-t-0 small:table-header-group">
             <Table.Row className="border-[#ded7cf] text-[10px] font-semibold uppercase tracking-[0.16em] text-[#806e60] hover:bg-transparent">
               <Table.HeaderCell className="!pl-0">Продукт</Table.HeaderCell>
               <Table.HeaderCell></Table.HeaderCell>
@@ -36,7 +36,7 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
               </Table.HeaderCell>
             </Table.Row>
           </Table.Header>
-          <Table.Body>
+          <Table.Body className="block small:table-row-group">
             {items
               ? items
                   .sort((a, b) => {
