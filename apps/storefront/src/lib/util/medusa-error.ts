@@ -1,40 +1,46 @@
-type MedusaError = {
-  response?: {
-    data: unknown
-    status: number
-  }
-  message?: string
+type RequestError = {
+  status?: unknown
+  message?: unknown
+  response?: { status?: unknown; data?: unknown }
+}
+
+/** Medusa SDK FetchError uses status; older clients used response.status. */
+export function getMedusaErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null) return undefined
+  const requestError = error as RequestError
+  const status = requestError.status ?? requestError.response?.status
+  return typeof status === "number" &&
+    Number.isInteger(status) &&
+    status >= 100 &&
+    status <= 599
+    ? status
+    : undefined
 }
 
 export default function medusaError(error: unknown): never {
-  const err = error as MedusaError
-  if (err.response) {
-    const data = err.response.data
+  const status = getMedusaErrorStatus(error)
+  const fallback = "Заявката не можа да бъде изпълнена. Опитайте отново."
+  let message = fallback
+
+  if (status !== undefined && status >= 400 && status < 500) {
+    const requestError = error as RequestError
+    const data = requestError.response?.data
     const upstreamMessage =
       typeof data === "object" && data !== null && "message" in data
         ? data.message
-        : undefined
-    const safeMessage =
-        err.response.status >= 500
-        ? "The request could not be completed. Please try again."
-        : typeof upstreamMessage === "string"
-          ? upstreamMessage
-              .replace(/[\r\n\u0000-\u001f]+/g, " ")
-              .trim()
-              .slice(0, 300)
-          : "The request could not be completed. Please try again."
-
-    // Do not log response bodies or headers: either can contain customer data,
-    // cookies, or credentials. A status code is enough for server diagnostics.
-    console.error("Medusa request failed with status", err.response.status)
-    throw new Error(
-      safeMessage
-        ? safeMessage.charAt(0).toUpperCase() +
-          safeMessage.slice(1).replace(/[.!?]*$/, ".")
-        : "The request could not be completed. Please try again.",
-    )
+        : requestError.message
+    if (typeof upstreamMessage === "string") {
+      message =
+        upstreamMessage
+          .replace(/[\r\n\u0000-\u001f]+/g, " ")
+          .trim()
+          .slice(0, 300) || fallback
+    }
   }
 
-  console.error("Medusa request failed before receiving a response")
-  throw new Error("The request could not be completed. Please try again.")
+  // Never log messages, bodies or headers: they can contain private data.
+  if (status !== undefined)
+    console.error("Medusa request failed with status", status)
+  else console.error("Medusa request failed before receiving a response")
+  throw new Error(message)
 }

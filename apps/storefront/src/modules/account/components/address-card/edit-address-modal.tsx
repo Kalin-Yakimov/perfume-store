@@ -27,6 +27,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
   isActive = false,
 }) => {
   const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
   const [successState, setSuccessState] = useState(false)
   const { state, open, close: closeModal } = useToggleState(false)
 
@@ -54,9 +55,17 @@ const EditAddress: React.FC<EditAddressProps> = ({
   }, [formState])
 
   const removeAddress = async () => {
+    if (removing) return
     setRemoving(true)
-    await deleteCustomerAddress(address.id)
-    setRemoving(false)
+    setRemoveError(null)
+    try {
+      const result = await deleteCustomerAddress(address.id)
+      if (!result.success) setRemoveError(result.error)
+    } catch {
+      setRemoveError("Адресът не можа да бъде изтрит. Опитайте отново.")
+    } finally {
+      setRemoving(false)
+    }
   }
 
   return (
@@ -66,7 +75,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
           "border rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between transition-colors",
           {
             "border-gray-900": isActive,
-          }
+          },
         )}
         data-testid="address-container"
       >
@@ -111,12 +120,19 @@ const EditAddress: React.FC<EditAddressProps> = ({
           <button
             className="text-small-regular text-ui-fg-base flex items-center gap-x-2"
             onClick={removeAddress}
+            type="button"
+            disabled={removing}
             data-testid="address-delete-button"
           >
             {removing ? <Spinner /> : <Trash />}
             Remove
           </button>
         </div>
+        {removeError && (
+          <p role="alert" className="mt-2 text-sm text-rose-600">
+            {removeError}
+          </p>
+        )}
       </div>
 
       <Modal isOpen={state} close={close} data-testid="edit-address-modal">

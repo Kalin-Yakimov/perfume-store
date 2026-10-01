@@ -34,7 +34,7 @@ jobs:
       - name: Typecheck backend and storefront
         run: npm run typecheck
 
-      - name: Run backend unit tests
+      - name: Run backend and storefront unit tests
         run: npm run test:unit
 
       - name: Build backend and storefront

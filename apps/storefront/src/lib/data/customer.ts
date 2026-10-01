@@ -5,6 +5,7 @@ import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { redirect } from "next/navigation"
+import { revalidatePath } from "next/cache"
 import {
   getAuthHeaders,
   getCartId,
@@ -81,6 +82,7 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
     .then(({ customer }) => customer)
     .catch(medusaError)
 
+  revalidatePath("/", "layout")
   return updateRes
 }
 
@@ -114,7 +116,8 @@ export async function signup(
     ) {
       return {
         state: "error",
-        error: "Регистрацията не можа да бъде завършена. Проверете данните и опитайте отново.",
+        error:
+          "Регистрацията не можа да бъде завършена. Проверете данните и опитайте отново.",
       }
     }
   }
@@ -237,7 +240,8 @@ async function completeLogin(
     } catch {
       return {
         state: "error",
-        error: "Неуспешно активиране на профила. Моля, опитайте да влезете отново.",
+        error:
+          "Неуспешно активиране на профила. Моля, опитайте да влезете отново.",
       }
     }
 
@@ -252,7 +256,8 @@ async function completeLogin(
   } catch {
     return {
       state: "error",
-      error: "Входът е успешен, но кошницата не можа да се свърже с профила ви.",
+      error:
+        "Входът е успешен, но кошницата не можа да се свърже с профила ви.",
     }
   }
 
@@ -273,7 +278,8 @@ export async function confirmEmailVerification(
     return {
       success: false,
       signedIn: false,
-      error: "Линкът е невалиден или изтекъл. Поискайте нов линк за потвърждение.",
+      error:
+        "Линкът е невалиден или изтекъл. Поискайте нов линк за потвърждение.",
     }
   }
 
@@ -429,7 +435,6 @@ export async function transferCart() {
   const headers = await getAuthHeaders()
 
   await sdk.store.cart.transferCart(cartId, {}, headers)
-
 }
 
 export const addCustomerAddress = async (
@@ -460,25 +465,32 @@ export const addCustomerAddress = async (
 
   return sdk.store.customer
     .createAddress(address, {}, headers)
-    .then(() => ({ success: true, error: null }))
+    .then(() => {
+      revalidatePath("/", "layout")
+      return { success: true, error: null }
+    })
     .catch(() => {
       return {
         success: false,
-        error: "Адресът не можа да бъде добавен. Проверете данните и опитайте отново.",
+        error:
+          "Адресът не можа да бъде добавен. Проверете данните и опитайте отново.",
       }
     })
 }
 
 export const deleteCustomerAddress = async (
   addressId: string,
-): Promise<void> => {
+): Promise<{ success: boolean; error: string | null }> => {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.customer
+  return sdk.store.customer
     .deleteAddress(addressId, headers)
-    .then(() => ({ success: true, error: null }))
+    .then(() => {
+      revalidatePath("/", "layout")
+      return { success: true, error: null }
+    })
     .catch(() => {
       return { success: false, error: "Адресът не можа да бъде изтрит." }
     })
@@ -519,11 +531,15 @@ export const updateCustomerAddress = async (
 
   return sdk.store.customer
     .updateAddress(addressId, address, {}, headers)
-    .then(() => ({ success: true, error: null }))
+    .then(() => {
+      revalidatePath("/", "layout")
+      return { success: true, error: null }
+    })
     .catch(() => {
       return {
         success: false,
-        error: "Адресът не можа да бъде обновен. Проверете данните и опитайте отново.",
+        error:
+          "Адресът не можа да бъде обновен. Проверете данните и опитайте отново.",
       }
     })
 }

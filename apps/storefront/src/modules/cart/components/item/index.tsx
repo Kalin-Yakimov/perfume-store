@@ -14,6 +14,7 @@ import Thumbnail from "@modules/products/components/thumbnail"
 import { useEffect, useState } from "react"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { useRouter } from "next/navigation"
+import { useCartMutation } from "@lib/context/cart-mutation-context"
 
 type ItemProps = {
   item: HttpTypes.StoreCartLineItem
@@ -25,7 +26,20 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(item.quantity)
-  const [limit, setLimit] = useState<number | null | undefined>(undefined)
+  const [limitState, setLimitState] = useState<{
+    revision: string
+    value?: number | null
+    error?: string
+  } | null>(null)
+  const [retry, setRetry] = useState(0)
+  const mutation = useCartMutation()
+  const isMutating = mutation?.isMutating || updating
+  const revision = `${mutation?.revision ?? `${item.id}:${item.quantity}`}:${retry}`
+  const limit =
+    !isMutating && limitState?.revision === revision
+      ? limitState.value
+      : undefined
+  const stockError = limitState?.revision === revision ? limitState.error : null
   const router = useRouter()
   const title = formatProductTitle(
     item.product_title || item.title || "",
@@ -33,35 +47,40 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   )
 
   useEffect(() => {
-    if (type !== "full") return
-    let active = true
     setQuantity(item.quantity)
-    setLimit(undefined)
+  }, [item.quantity])
+
+  useEffect(() => {
+    if (type !== "full" || isMutating) return
+    let active = true
     getCartLineItemQuantityLimit(item.id)
       .then((value) => {
-        if (active) setLimit(value)
+        if (active) setLimitState({ revision, value })
       })
       .catch((cause) => {
         if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Наличността временно не може да бъде проверена.",
-          )
+          setLimitState({
+            revision,
+            error:
+              cause instanceof Error
+                ? cause.message
+                : "Наличността временно не може да бъде проверена.",
+          })
       })
     return () => {
       active = false
     }
-  }, [item.id, item.quantity, type])
+  }, [item.id, revision, isMutating, type])
 
   const changeQuantity = async (nextQuantity: number) => {
     if (
       nextQuantity < 1 ||
-      updating ||
+      isMutating ||
       (nextQuantity > quantity &&
         (limit === undefined || (limit !== null && nextQuantity > limit)))
     )
       return
+    if (mutation && !mutation.beginMutation()) return
     setError(null)
     setUpdating(true)
 
@@ -69,37 +88,33 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
       await updateLineItem({ lineId: item.id, quantity: nextQuantity })
       setQuantity(nextQuantity)
       router.refresh()
-      try {
-        setLimit(await getCartLineItemQuantityLimit(item.id))
-      } catch {
-        setLimit(undefined)
-        setError("Наличността временно не може да бъде проверена.")
-      }
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
           : "Количеството не можа да бъде променено.",
       )
-      setLimit(undefined)
-      getCartLineItemQuantityLimit(item.id)
-        .then(setLimit)
-        .catch(() => setLimit(undefined))
     } finally {
       setUpdating(false)
+      setRetry((current) => current + 1)
+      mutation?.finishMutation()
     }
   }
 
   return (
     <Table.Row
       className={clx("w-full", {
-        "grid grid-cols-[64px_minmax(0,1fr)] gap-x-3 py-4 small:table-row small:py-0": type === "full",
+        "grid grid-cols-[64px_minmax(0,1fr)] gap-x-3 py-4 small:table-row small:py-0":
+          type === "full",
       })}
       data-testid="product-row"
     >
-      <Table.Cell className={clx("!pl-0 p-4 w-24", {
-        "row-span-2 !w-auto !p-0 small:!w-24 small:!py-4 small:!pr-4": type === "full",
-      })}>
+      <Table.Cell
+        className={clx("!pl-0 p-4 w-24", {
+          "row-span-2 !w-auto !p-0 small:!w-24 small:!py-4 small:!pr-4":
+            type === "full",
+        })}
+      >
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
           className={clx("flex", {
@@ -116,9 +131,11 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </LocalizedClientLink>
       </Table.Cell>
 
-      <Table.Cell className={clx("text-left", {
-        "min-w-0 !p-0 small:!p-4": type === "full",
-      })}>
+      <Table.Cell
+        className={clx("text-left", {
+          "min-w-0 !p-0 small:!p-4": type === "full",
+        })}
+      >
         <Text
           className="txt-medium-plus text-ui-fg-base"
           data-testid="product-title"
@@ -140,7 +157,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
                 type="button"
                 aria-label="Намали количеството"
                 onClick={() => void changeQuantity(quantity - 1)}
-                disabled={updating || quantity <= 1}
+                disabled={isMutating || quantity <= 1}
                 className="h-full w-8 text-lg text-[#302a25] transition hover:bg-[#f3eee8] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 −
@@ -157,7 +174,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
                 aria-label="Увеличи количеството"
                 onClick={() => void changeQuantity(quantity + 1)}
                 disabled={
-                  updating ||
+                  isMutating ||
                   limit === undefined ||
                   (limit !== null && quantity >= limit)
                 }
@@ -168,7 +185,10 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             </div>
             {updating && <Spinner />}
           </div>
-          <ErrorMessage error={error} data-testid="product-error-message" />
+          <ErrorMessage
+            error={error || stockError}
+            data-testid="product-error-message"
+          />
         </Table.Cell>
       )}
 
@@ -182,9 +202,12 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </Table.Cell>
       )}
 
-      <Table.Cell className={clx("!pr-0", {
-        "col-start-2 !px-0 !pb-0 !pt-3 small:!py-4 small:!pl-4": type === "full",
-      })}>
+      <Table.Cell
+        className={clx("!pr-0", {
+          "col-start-2 !px-0 !pb-0 !pt-3 small:!py-4 small:!pl-4":
+            type === "full",
+        })}
+      >
         <span
           className={clx("!pr-0", {
             "flex flex-col items-end h-full justify-center": type === "preview",

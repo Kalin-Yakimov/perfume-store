@@ -1,16 +1,11 @@
 "use server"
 
 import { sdk } from "@lib/config"
-import medusaError from "@lib/util/medusa-error"
+import medusaError, { getMedusaErrorStatus } from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
-import {
-  getAuthHeaders,
-  getCartId,
-  removeCartId,
-  setCartId,
-} from "./cookies"
+import { getAuthHeaders, getCartId, removeCartId, setCartId } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { listCartShippingMethods } from "./fulfillment"
@@ -51,7 +46,10 @@ export async function retrieveCart(cartId?: string, fields?: string) {
       cache: "no-store",
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
-    .catch(() => null)
+    .catch((error) => {
+      if (getMedusaErrorStatus(error) === 404) return null
+      return medusaError(error)
+    })
 }
 
 export async function getOrSetCart(countryCode: string) {
@@ -126,11 +124,13 @@ export async function addToCart({
     ...(await getAuthHeaders()),
   }
 
-  await sdk.client.fetch(`/store/decant-stock/validate`, {
-    method: "POST",
-    body: { cart_id: cart.id, variant_id: variantId, quantity },
-    headers,
-  })
+  await sdk.client
+    .fetch(`/store/decant-stock/validate`, {
+      method: "POST",
+      body: { cart_id: cart.id, variant_id: variantId, quantity },
+      headers,
+    })
+    .catch(medusaError)
 
   await sdk.store.cart
     .createLineItem(
@@ -166,15 +166,17 @@ export async function updateLineItem({
     ...(await getAuthHeaders()),
   }
 
-  await sdk.client.fetch(`/store/decant-stock/validate`, {
-    method: "POST",
-    body: {
-      cart_id: cartId,
-      line_item_id: lineId,
-      quantity,
-    },
-    headers,
-  })
+  await sdk.client
+    .fetch(`/store/decant-stock/validate`, {
+      method: "POST",
+      body: {
+        cart_id: cartId,
+        line_item_id: lineId,
+        quantity,
+      },
+      headers,
+    })
+    .catch(medusaError)
 
   await sdk.store.cart
     .updateLineItem(cartId, lineId, { quantity }, {}, headers)
@@ -250,9 +252,7 @@ export async function getCartLineItemQuantityLimit(
       })
       return true
     } catch (cause) {
-      if (
-        (cause as { response?: { status?: number } }).response?.status === 409
-      ) {
+      if (getMedusaErrorStatus(cause) === 409) {
         return false
       }
       throw cause
@@ -499,7 +499,7 @@ export async function placeOrder(cartId?: string) {
     const countryCode =
       cartRes.order.shipping_address?.country_code?.toLowerCase()
 
-    removeCartId()
+    await removeCartId()
     redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
   }
 
