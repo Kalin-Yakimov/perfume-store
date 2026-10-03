@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 
 import { listCartOptions, retrieveCart } from "@lib/data/cart"
-import { retrieveCustomer } from "@lib/data/customer"
+import { retrieveCustomerSummary } from "@lib/data/customer-read"
 import { getBaseURL } from "@lib/util/env"
 import { StoreCartShippingOption } from "@medusajs/types"
 import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
@@ -14,10 +14,12 @@ export const metadata: Metadata = {
 }
 
 export default async function PageLayout(props: { children: React.ReactNode }) {
-  const customer = await retrieveCustomer()
   // Optional cart decoration must not prevent browsing cached public pages.
   // Cart mutations still propagate failures instead of replacing the cart.
-  const cart = await retrieveCart().catch(() => null)
+  const [customer, cart] = await Promise.all([
+    retrieveCustomerSummary(),
+    retrieveCart().catch(() => null),
+  ])
   let shippingOptions: StoreCartShippingOption[] = []
 
   if (cart) {

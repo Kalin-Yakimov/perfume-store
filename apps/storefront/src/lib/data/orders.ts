@@ -4,6 +4,37 @@ import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
 import { getAuthHeaders } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
+import type { RecentOrder } from "./order-types"
+
+export async function listRecentOrders(): Promise<RecentOrder[]> {
+  const { authorization } = await getAuthHeaders()
+  if (!authorization) return []
+
+  return sdk.client
+    .fetch<{ orders: RecentOrder[] }>("/store/orders", {
+      method: "GET",
+      query: {
+        limit: 5,
+        offset: 0,
+        order: "-created_at",
+        fields: "id,display_id,created_at,total,currency_code",
+      },
+      headers: { authorization },
+      cache: "no-store",
+    })
+    .then(({ orders }) =>
+      orders
+        .slice(0, 5)
+        .map(({ id, display_id, created_at, total, currency_code }) => ({
+          id,
+          display_id,
+          created_at,
+          total,
+          currency_code,
+        })),
+    )
+    .catch(medusaError)
+}
 
 export const retrieveOrder = async (id: string) => {
   const headers = {

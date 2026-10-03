@@ -4,13 +4,14 @@ import EmptyCartMessage from "../components/empty-cart-message"
 import SignInPrompt from "../components/sign-in-prompt"
 import Divider from "@modules/common/components/divider"
 import { HttpTypes } from "@medusajs/types"
+import type { CustomerSummary } from "@lib/data/customer-types"
 
 const CartTemplate = ({
   cart,
   customer,
 }: {
   cart: HttpTypes.StoreCart | null
-  customer: HttpTypes.StoreCustomer | null
+  customer: CustomerSummary | null
 }) => {
   return (
     <div className="flex flex-1 flex-col bg-[#fbf9f6]">

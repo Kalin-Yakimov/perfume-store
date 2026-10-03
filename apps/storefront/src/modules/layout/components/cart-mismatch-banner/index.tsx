@@ -2,11 +2,12 @@
 
 import { transferCart } from "@lib/data/customer"
 import { ExclamationCircleSolid } from "@medusajs/icons"
-import { StoreCart, StoreCustomer } from "@medusajs/types"
+import { StoreCart } from "@medusajs/types"
+import type { CustomerSummary } from "@lib/data/customer-types"
 import { Button } from "@modules/common/components/ui"
 import { useState } from "react"
 function CartMismatchBanner(props: {
-  customer: StoreCustomer
+  customer: CustomerSummary
   cart: StoreCart
 }) {
   const { customer, cart } = props

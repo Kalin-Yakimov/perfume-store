@@ -6,6 +6,8 @@ const allowedTypes = new Set([
   "integration:http",
   "integration:modules",
   "integration:orders",
+  "integration:catalog",
+  "integration:operations",
 ])
 
 if (!allowedTypes.has(testType)) {
@@ -16,7 +18,7 @@ if (!allowedTypes.has(testType)) {
 const jestCli = require.resolve("jest/bin/jest")
 const result = spawnSync(
   process.execPath,
-  [jestCli, "--silent=false", "--runInBand", "--forceExit", ...(testType === "unit" ? ["--silent"] : [])],
+  [jestCli, "--silent=false", "--runInBand", "--forceExit", ...(testType === "unit" ? ["--silent"] : []), ...process.argv.slice(3)],
   {
     stdio: "inherit",
     env: {

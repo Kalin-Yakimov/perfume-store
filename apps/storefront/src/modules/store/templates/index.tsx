@@ -1,22 +1,12 @@
 import { Suspense } from "react"
 
-import { listAllProducts } from "@lib/data/products"
+import { listCatalogProducts } from "@lib/data/catalog"
 import { getRegion } from "@lib/data/regions"
-import { getProductPrice } from "@lib/util/get-product-price"
 import { OptionValueIds } from "@lib/util/product-option-filters"
-import {
-  filterPerfumeProducts,
-  PerfumeFilters,
-  PerfumeListingType,
-} from "@lib/util/perfume-filters"
-import { sortProducts } from "@lib/util/sort-products"
-import { getUnavailableProductIds } from "@lib/data/product-availability"
+import { PerfumeFilters, PerfumeListingType } from "@lib/util/perfume-filters"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import RefinementList from "@modules/store/components/refinement-list"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
-import { HttpTypes } from "@medusajs/types"
-import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
-import { catalogBrandOptions } from "@lib/util/product-taxonomy"
 
 import PaginatedProducts from "./paginated-products"
 
@@ -41,52 +31,27 @@ const StoreTemplate = async ({
   catalogTitle?: string
   listingType?: PerfumeListingType
 }) => {
-  const pageNumber = page ? parseInt(page) : 1
+  const parsedPage = Number(page || 1)
+  const pageNumber =
+    Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1
   const sort = sortBy || "created_at"
   const region = await getRegion(countryCode)
 
   if (!region) return null
 
-  const queryParams: HttpTypes.StoreProductListParams & {
-    option_value_id?: string[]
-  } = {
-    limit: 100,
-    ...(searchQuery ? { q: searchQuery } : {}),
-    ...(optionValueIds?.length ? { option_value_id: optionValueIds } : {}),
-  }
-  const products = await listAllProducts({ queryParams, countryCode })
-  const taxonomies = await listPerfumeTaxonomies()
-  const catalogProducts = filterPerfumeProducts(
-    products,
-    undefined,
+  const result = await listCatalogProducts({
+    countryCode,
+    page: pageNumber,
+    limit: 40,
+    sortBy: sort,
+    query: searchQuery,
+    filters: perfumeFilters,
     listingType,
-    taxonomies,
-  )
-  const filteredProducts = filterPerfumeProducts(
-    products,
-    perfumeFilters,
-    listingType,
-    taxonomies,
-  )
-  const unavailableIds = new Set(
-    await getUnavailableProductIds(filteredProducts),
-  )
-  const sortedByPreference = sortProducts(filteredProducts, sort)
-  const sortedProducts = [
-    ...sortedByPreference.filter((product) => !unavailableIds.has(product.id)),
-    ...sortedByPreference.filter((product) => unavailableIds.has(product.id)),
-  ]
-  const start = (pageNumber - 1) * 40
-  const pageProducts = sortedProducts.slice(start, start + 40)
-  const brands = catalogBrandOptions(catalogProducts, taxonomies)
-  const highestCatalogPrice = catalogProducts.reduce((highest, product) => {
-    const price = getProductPrice({ product }).cheapestPrice
-      ?.calculated_price_number
-    return typeof price === "number" ? Math.max(highest, price) : highest
-  }, 0)
-  const priceMax = catalogProducts.length
-    ? Math.max(5, Math.ceil(highestCatalogPrice / 5) * 5)
-    : 100
+    optionValueIds,
+    facets: true,
+  })
+  const brands = result.facets.brands
+  const priceMax = result.facets.price_max
 
   return (
     <div className="bg-[#fbf9f6]">
@@ -119,9 +84,9 @@ const StoreTemplate = async ({
               perfumeFilters={perfumeFilters}
               optionValueIds={optionValueIds}
               listingType={listingType}
-              preloadedProducts={pageProducts}
-              unavailableProductIds={Array.from(unavailableIds)}
-              preloadedCount={filteredProducts.length}
+              preloadedProducts={result.products}
+              unavailableProductIds={result.unavailable_product_ids}
+              preloadedCount={result.count}
               preloadedRegion={region}
             />
           </Suspense>

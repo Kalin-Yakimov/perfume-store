@@ -3,9 +3,10 @@ import React from "react"
 import AddAddress from "../address-card/add-address"
 import EditAddress from "../address-card/edit-address-modal"
 import { HttpTypes } from "@medusajs/types"
+import type { CustomerProfile } from "@lib/data/customer-types"
 
 type AddressBookProps = {
-  customer: HttpTypes.StoreCustomer
+  customer: CustomerProfile
   region: HttpTypes.StoreRegion
 }
 

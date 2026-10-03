@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation"
 import { signout } from "@lib/data/customer"
-import { HttpTypes } from "@medusajs/types"
+import type { CustomerSummary } from "@lib/data/customer-types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const accountLinks = [
@@ -15,7 +15,7 @@ const accountLinks = [
 export default function AccountMenu({
   customer,
 }: {
-  customer: HttpTypes.StoreCustomer | null
+  customer: CustomerSummary | null
 }) {
   const { countryCode } = useParams() as { countryCode: string }
   const firstName = customer?.first_name?.trim()

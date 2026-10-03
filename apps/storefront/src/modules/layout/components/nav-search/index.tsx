@@ -6,9 +6,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { useParams, useRouter } from "next/navigation"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { convertToLocale } from "@lib/util/money"
-import { getDecantCatalogAvailability } from "@lib/data/decant-stock"
 import { getRegion } from "@lib/data/regions"
-import { isProductVisibleInCatalog } from "@lib/util/perfume-filters"
 import { resolveProductTaxonomy } from "@lib/util/product-taxonomy"
 import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
 import { FormEvent, useEffect, useRef, useState } from "react"
@@ -66,24 +64,6 @@ const variantDetails = (product: SearchProduct, unavailable: boolean) => {
   return Array.from(new Set(details.map((detail) => detail.text)))
 }
 
-const productIsUnavailable = (
-  product: SearchProduct,
-  decantAvailability: Record<string, boolean> | null,
-) => {
-  if (product.metadata?.listing_type === "decant") {
-    // Match the catalog: when the decant stock endpoint is temporarily
-    // unavailable, don't incorrectly mark the result as sold out.
-    return decantAvailability?.[product.id] === false
-  }
-
-  return !(product.variants || []).some(
-    (variant) =>
-      !variant.manage_inventory ||
-      variant.allow_backorder ||
-      (variant.inventory_quantity || 0) > 0,
-  )
-}
-
 export default function NavSearch() {
   const router = useRouter()
   const { countryCode } = useParams<{ countryCode: string }>()
@@ -130,35 +110,22 @@ export default function NavSearch() {
           return
         }
 
-        const response = await sdk.store.product.list({
-          q: searchTerm,
-          limit: 100,
-          region_id: region.id,
-          fields:
-            "id,title,handle,thumbnail,+variants.title,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+variants.metadata,*variants.images,*variants.options,+metadata,+tags",
+        const response = await sdk.client.fetch<{
+          products: HttpTypes.StoreProduct[]
+          unavailable_product_ids: string[]
+        }>("/store/catalog", {
+          query: { q: searchTerm, limit: 6, region_id: region.id },
+          cache: "no-store",
         })
 
         const taxonomies = await listPerfumeTaxonomies()
-        const visibleProducts = response.products
-          .filter(isProductVisibleInCatalog)
-          .map((product) => resolveProductTaxonomy(product, taxonomies))
-        const decantIds = visibleProducts
-          .filter((product) => product.metadata?.listing_type === "decant")
-          .map((product) => product.id)
-        const decantAvailability = await getDecantCatalogAvailability(decantIds)
-        const sorted = visibleProducts
-          .map((product) => ({
-            product,
-            unavailable: productIsUnavailable(product, decantAvailability),
-          }))
-          .sort((a, b) => Number(a.unavailable) - Number(b.unavailable))
-          .slice(0, 6)
+        const unavailableIds = new Set(response.unavailable_product_ids)
 
         if (active) {
           setProducts(
-            sorted.map(({ product, unavailable }) => ({
-              ...product,
-              unavailable,
+            response.products.map((product) => ({
+              ...resolveProductTaxonomy(product, taxonomies),
+              unavailable: unavailableIds.has(product.id),
             })),
           )
           setIsOpen(true)

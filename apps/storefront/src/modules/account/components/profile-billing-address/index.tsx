@@ -7,10 +7,11 @@ import NativeSelect from "@modules/common/components/native-select"
 
 import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
+import type { CustomerProfile } from "@lib/data/customer-types"
 import AccountInfo from "../account-info"
 
 type MyInformationProps = {
-  customer: HttpTypes.StoreCustomer
+  customer: CustomerProfile
   regions: HttpTypes.StoreRegion[]
 }
 

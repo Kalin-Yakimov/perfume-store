@@ -25,6 +25,7 @@ jest.mock("../cookies", () => ({
 }))
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("next/navigation", () => ({ redirect: jest.fn() }))
+jest.mock("../customer-read", () => ({ retrieveCustomer: jest.fn() }))
 
 describe("customer mutation refresh", () => {
   beforeEach(() => {

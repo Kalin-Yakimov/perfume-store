@@ -5,7 +5,7 @@ import { clx } from "@modules/common/components/ui"
 import { useParams, usePathname } from "next/navigation"
 
 import { signout } from "@lib/data/customer"
-import { HttpTypes } from "@medusajs/types"
+import type { CustomerSummary } from "@lib/data/customer-types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import MapPin from "@modules/common/icons/map-pin"
@@ -15,7 +15,7 @@ import User from "@modules/common/icons/user"
 const AccountNav = ({
   customer,
 }: {
-  customer: HttpTypes.StoreCustomer | null
+  customer: CustomerSummary | null
 }) => {
   const route = usePathname()
   const { countryCode } = useParams() as { countryCode: string }

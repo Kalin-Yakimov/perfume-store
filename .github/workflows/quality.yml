@@ -37,6 +37,9 @@ jobs:
       - name: Run backend and storefront unit tests
         run: npm run test:unit
 
+      - name: Test signed invalidation against the production Next.js cache
+        run: npm run test:integration:cache
+
       - name: Build backend and storefront
         run: npm run build
         env:
@@ -91,6 +94,46 @@ jobs:
 
       - name: Test stock and order integration
         run: npm run test:integration:orders
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: medusa_test
+          DB_PASSWORD: medusa_test
+          DATABASE_URL: postgres://medusa_test:medusa_test@127.0.0.1:5432/postgres
+          STORE_CORS: http://localhost:8000
+          ADMIN_CORS: http://localhost:9000
+          AUTH_CORS: http://localhost:9000
+          JWT_SECRET: integration-only-jwt-secret
+          COOKIE_SECRET: integration-only-cookie-secret
+          SMTP_HOST: 127.0.0.1
+          SMTP_PORT: 1025
+          SMTP_USER: integration-test
+          SMTP_PASS: integration-only-placeholder
+          SMTP_FROM_EMAIL: test@example.invalid
+          SMTP_SECURE: "false"
+
+      - name: Test compensated admin product operations
+        run: npm run test:integration:operations
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: medusa_test
+          DB_PASSWORD: medusa_test
+          DATABASE_URL: postgres://medusa_test:medusa_test@127.0.0.1:5432/postgres
+          STORE_CORS: http://localhost:8000
+          ADMIN_CORS: http://localhost:9000
+          AUTH_CORS: http://localhost:9000
+          JWT_SECRET: integration-only-jwt-secret
+          COOKIE_SECRET: integration-only-cookie-secret
+          SMTP_HOST: 127.0.0.1
+          SMTP_PORT: 1025
+          SMTP_USER: integration-test
+          SMTP_PASS: integration-only-placeholder
+          SMTP_FROM_EMAIL: test@example.invalid
+          SMTP_SECURE: "false"
+
+      - name: Test catalog filtering, pagination and invalidation
+        run: npm run test:integration:catalog
         env:
           DB_HOST: localhost
           DB_PORT: 5432

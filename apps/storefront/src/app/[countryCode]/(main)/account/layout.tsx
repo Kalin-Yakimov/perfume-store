@@ -1,4 +1,4 @@
-import { retrieveCustomer } from "@lib/data/customer"
+import { retrieveCustomerSummary } from "@lib/data/customer-read"
 import { Metadata } from "next"
 // TODO: Re-add Toaster component when needed
 import AccountLayout from "@modules/account/templates/account-layout"
@@ -14,7 +14,7 @@ export default async function AccountPageLayout({
   dashboard?: React.ReactNode
   login?: React.ReactNode
 }) {
-  const customer = await retrieveCustomer().catch(() => null)
+  const customer = await retrieveCustomerSummary()
 
   return (
     <AccountLayout customer={customer}>

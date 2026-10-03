@@ -93,6 +93,9 @@ module.exports = defineConfig({
   },
   modules: [
     {
+      resolve: "./src/modules/catalog-index",
+    },
+    {
       resolve: "./src/modules/perfume-taxonomy",
     },
     {

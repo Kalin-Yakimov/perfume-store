@@ -1,13 +1,11 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { isFullPerfume, perfumeFields } from "../../../lib/full-perfume"
-import {
-  CreateFullPerfumeInput,
-  createFullPerfumeWorkflow,
-} from "../../../workflows/create-full-perfume"
+import { createFullPerfumeWorkflow } from "../../../workflows/create-full-perfume"
+import type { CreateFullPerfumeBody } from "../products/validators"
 
-export async function GET(req: MedusaRequest, res: MedusaResponse) {
+export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const pageSize = 100
   let skip = 0
@@ -25,17 +23,12 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   res.json({ products })
 }
 
-export async function POST(req: MedusaRequest<CreateFullPerfumeInput>, res: MedusaResponse) {
-  const { result } = await createFullPerfumeWorkflow(req.scope).run({ input: req.body || {} })
-  if (result.status !== 201) {
-    res.status(result.status).json({ message: result.message })
-    return
-  }
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const { data: saved } = await query.graph({
-    entity: "product",
-    filters: { id: result.product_id },
-    fields: perfumeFields,
+export async function POST(
+  req: AuthenticatedMedusaRequest<CreateFullPerfumeBody>,
+  res: MedusaResponse,
+) {
+  const { result } = await createFullPerfumeWorkflow(req.scope).run({
+    input: req.validatedBody,
   })
-  res.status(201).json({ product: saved[0] })
+  res.status(201).json({ product: result.product })
 }

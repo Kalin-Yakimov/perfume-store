@@ -6,6 +6,7 @@ import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
+import { retrieveCustomer as readCustomer } from "./customer-read"
 import {
   getAuthHeaders,
   getCartId,
@@ -47,30 +48,7 @@ async function requestVerificationEmail(email: string, token: string) {
   )
 }
 
-export const retrieveCustomer =
-  async (): Promise<HttpTypes.StoreCustomer | null> => {
-    const authHeaders = await getAuthHeaders()
-
-    if (!authHeaders) return null
-
-    const headers = {
-      ...authHeaders,
-    }
-
-    return await sdk.client
-      .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
-        method: "GET",
-        query: {
-          fields: "*orders",
-        },
-        headers,
-        // Customer records are private and include personally identifiable
-        // information; never store them in Next.js' shared data cache.
-        cache: "no-store",
-      })
-      .then(({ customer }) => customer)
-      .catch(() => null)
-  }
+export const retrieveCustomer = async () => readCustomer()
 
 export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
   const headers = {

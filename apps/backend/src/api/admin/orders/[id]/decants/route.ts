@@ -1,22 +1,17 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
-import { DECANT_STOCK_MODULE } from "../../../../../modules/decant-stock"
-import DecantStockModuleService from "../../../../../modules/decant-stock/service"
-import {
-  linkDecantAllocationsForOrder,
-  prepareDecantOrderWorkflow,
-} from "../../../../../workflows/prepare-decant-order"
+import { readDecantAllocationsForOrder } from "../../../../../workflows/decant-order-operations"
+import { prepareDecantOrderWorkflow } from "../../../../../workflows/prepare-decant-order"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const orderId = req.params.id
   const orderService = req.scope.resolve(Modules.ORDER)
   await orderService.retrieveOrder(orderId)
-  await linkDecantAllocationsForOrder(req.scope, orderId)
-
-  const service: DecantStockModuleService = req.scope.resolve(DECANT_STOCK_MODULE)
-  const allocations = await service.listDecantAllocations({ order_id: orderId })
-  const sourceProductIds = [...new Set(allocations.map((item) => item.source_product_id))]
+  const allocations = await readDecantAllocationsForOrder(req.scope, orderId)
+  const sourceProductIds = [
+    ...new Set(allocations.map((item) => item.source_product_id)),
+  ]
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data: sourceProducts } = sourceProductIds.length
     ? await query.graph({
@@ -26,7 +21,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       })
     : { data: [] as { id: string; title: string }[] }
   const titles = new Map<string, string>(
-    sourceProducts.map((product) => [product.id, product.title] as [string, string])
+    sourceProducts.map(
+      (product) => [product.id, product.title] as [string, string],
+    ),
   )
 
   res.json({

@@ -3,11 +3,12 @@ import { Container } from "@modules/common/components/ui"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
-import { HttpTypes } from "@medusajs/types"
+import type { CustomerProfile } from "@lib/data/customer-types"
+import type { RecentOrder } from "@lib/data/order-types"
 
 type OverviewProps = {
-  customer: HttpTypes.StoreCustomer | null
-  orders: HttpTypes.StoreOrder[] | null
+  customer: CustomerProfile | null
+  orders: RecentOrder[] | null
 }
 
 const Overview = ({ customer, orders }: OverviewProps) => {
@@ -74,7 +75,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                 data-testid="orders-wrapper"
               >
                 {orders && orders.length > 0 ? (
-                  orders.slice(0, 5).map((order) => {
+                  orders.map((order) => {
                     return (
                       <li
                         key={order.id}
@@ -135,7 +136,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
   )
 }
 
-const getProfileCompletion = (customer: HttpTypes.StoreCustomer | null) => {
+const getProfileCompletion = (customer: CustomerProfile | null) => {
   let count = 0
 
   if (!customer) {

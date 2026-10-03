@@ -2,6 +2,7 @@
 
 import { DeliveryPoint } from "@lib/util/delivery-point"
 import { HttpTypes } from "@medusajs/types"
+import type { CustomerProfile } from "@lib/data/customer-types"
 import Input from "@modules/common/components/input"
 import { useEffect, useState } from "react"
 
@@ -10,7 +11,7 @@ export default function ShippingAddress({
   cart,
   point,
 }: {
-  customer: HttpTypes.StoreCustomer | null
+  customer: CustomerProfile | null
   cart: HttpTypes.StoreCart | null
   point: DeliveryPoint | null
 }) {

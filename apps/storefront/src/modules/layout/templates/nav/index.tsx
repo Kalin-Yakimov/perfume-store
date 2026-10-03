@@ -2,7 +2,7 @@ import { Suspense } from "react"
 
 import { listLocales } from "@lib/data/locales"
 import { getLocale } from "@lib/data/locale-actions"
-import { HttpTypes } from "@medusajs/types"
+import type { CustomerSummary } from "@lib/data/customer-types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import AccountMenu from "@modules/layout/components/account-menu"
 import CartButton from "@modules/layout/components/cart-button"
@@ -20,7 +20,7 @@ const navigationItems = [
 export default async function Nav({
   customer,
 }: {
-  customer: HttpTypes.StoreCustomer | null
+  customer: CustomerSummary | null
 }) {
   const [locales, currentLocale] = await Promise.all([
     listLocales(),

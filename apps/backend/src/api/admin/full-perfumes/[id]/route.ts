@@ -1,15 +1,16 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { isFullPerfume, perfumeFields } from "../../../../lib/full-perfume"
-import { UpdateFullPerfumeInput, updateFullPerfumeWorkflow } from "../../../../workflows/update-full-perfume"
+import { updateFullPerfumeWorkflow } from "../../../../workflows/update-full-perfume"
+import type { UpdateFullPerfumeBody } from "../../products/validators"
 
 type Product = {
   id: string
   metadata: Record<string, unknown> | null
 }
 
-export async function GET(req: MedusaRequest, res: MedusaResponse) {
+export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph({
     entity: "product",
@@ -24,9 +25,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   res.json({ product })
 }
 
-export async function PATCH(req: MedusaRequest<Omit<UpdateFullPerfumeInput, "product_id">>, res: MedusaResponse) {
+export async function PATCH(req: AuthenticatedMedusaRequest<UpdateFullPerfumeBody>, res: MedusaResponse) {
   const { result } = await updateFullPerfumeWorkflow(req.scope).run({
-    input: { ...req.body, product_id: req.params.id },
+    input: { ...req.validatedBody, product_id: req.params.id },
   })
   if (result.error) {
     const status = result.error.code === "not_found" ? 404 : result.error.code === "conflict" ? 409 : 400

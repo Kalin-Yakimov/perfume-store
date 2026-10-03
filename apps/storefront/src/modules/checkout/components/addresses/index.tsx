@@ -3,6 +3,7 @@
 import { setAddresses } from "@lib/data/cart"
 import { readDeliveryPoint } from "@lib/util/delivery-point"
 import { HttpTypes } from "@medusajs/types"
+import type { CustomerProfile } from "@lib/data/customer-types"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import ShippingAddress from "@modules/checkout/components/shipping-address"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
@@ -14,7 +15,7 @@ export default function Addresses({
   customer,
 }: {
   cart: HttpTypes.StoreCart | null
-  customer: HttpTypes.StoreCustomer | null
+  customer: CustomerProfile | null
 }) {
   const router = useRouter()
   const pathname = usePathname()

@@ -6,13 +6,16 @@
     "node": "22.20.x"
   },
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "node scripts/dev.cjs",
     "build": "turbo build",
     "start": "turbo start",
     "lint": "turbo lint",
     "test": "npm run test:unit",
-    "test:unit": "npm run test:unit --workspace=@dtc/backend && npm run test:unit --workspace=@dtc/storefront",
+    "test:unit": "node --test scripts/__tests__/*.test.cjs && npm run test:unit --workspace=@dtc/backend && npm run test:unit --workspace=@dtc/storefront",
     "test:integration:orders": "npm run test:integration:orders --workspace=@dtc/backend",
+    "test:integration:catalog": "npm run test:integration:catalog --workspace=@dtc/backend",
+    "test:integration:cache": "node scripts/test-cache-sync.cjs",
+    "test:integration:operations": "npm run test:integration:operations --workspace=@dtc/backend",
     "typecheck": "npm run typecheck --workspace=@dtc/backend && npm run typecheck --workspace=@dtc/storefront",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",

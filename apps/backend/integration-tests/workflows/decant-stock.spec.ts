@@ -1,4 +1,5 @@
 import type { MedusaContainer } from "@medusajs/framework"
+import { asValue } from "@medusajs/framework/awilix"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import {
@@ -29,6 +30,7 @@ import { deletePerfumeTaxonomyWorkflow } from "../../src/workflows/delete-perfum
 import { upsertPerfumeTaxonomyWorkflow } from "../../src/workflows/upsert-perfume-taxonomy"
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { assertPerfumeTaxonomyUnused } from "../../src/lib/perfume-taxonomy-references"
+import { GET as getOrderDecants } from "../../src/api/admin/orders/[id]/decants/route"
 
 jest.setTimeout(120_000)
 
@@ -58,12 +60,12 @@ const makeRequest = (
 const createScopedContainer = (
   container: MedusaContainer,
   overrides: Map<string, unknown>,
-) =>
-  ({
-    resolve(key: string) {
-      return overrides.has(key) ? overrides.get(key) : container.resolve(key)
-    },
-  }) as MedusaContainer
+) => {
+  // Workflow execution copies Awilix registrations, not a resolve-only wrapper.
+  const scoped = container.createScope() as MedusaContainer
+  for (const [key, value] of overrides) scoped.register(key, asValue(value))
+  return scoped
+}
 
 medusaIntegrationTestRunner({
   testSuite: ({ getContainer }) => {
@@ -299,7 +301,9 @@ medusaIntegrationTestRunner({
           updatePerfumeTaxonomyWorkflow(container).run({
             input: { id: item.id, name: "Must not remain" },
           }),
-        ).rejects.toMatchObject({ message: "Test-only label planning failure" })
+        ).rejects.toMatchObject({
+          message: "Test-only label planning failure",
+        })
       } finally {
         list.mockRestore()
       }
@@ -540,7 +544,12 @@ medusaIntegrationTestRunner({
       await reserveDecantSource(container, cartId, makeRequest(fixture, 2))
 
       const query = {
-        graph: jest.fn(async () => ({ data: [{ cart_id: cartId }] })),
+        graph: jest.fn(async ({ entity }: { entity: string }) => ({
+          data:
+            entity === "order"
+              ? [{ id: orderId, status: "pending", canceled_at: null }]
+              : [{ cart_id: cartId }],
+        })),
       }
       const scopedContainer = createScopedContainer(
         container,
@@ -559,7 +568,9 @@ medusaIntegrationTestRunner({
       await linkDecantsToOrder(event)
       await linkDecantsToOrder(event)
 
-      const allocations = await stock.listDecantAllocations({ cart_id: cartId })
+      const allocations = await stock.listDecantAllocations({
+        cart_id: cartId,
+      })
       expect(allocations).toHaveLength(2)
       expect(
         allocations.every((allocation) => allocation.order_id === orderId),
@@ -577,7 +588,12 @@ medusaIntegrationTestRunner({
       const orderId = "canceled-order"
       await reserveDecantSource(container, cartId, makeRequest(fixture, 2))
       const query = {
-        graph: jest.fn(async () => ({ data: [{ cart_id: cartId }] })),
+        graph: jest.fn(async ({ entity }: { entity: string }) => ({
+          data:
+            entity === "order"
+              ? [{ id: orderId, status: "canceled", canceled_at: new Date() }]
+              : [{ cart_id: cartId }],
+        })),
       }
       const scopedContainer = createScopedContainer(
         container,
@@ -608,6 +624,167 @@ medusaIntegrationTestRunner({
       expect(plans[0].status).toBe("released")
       const level = await getInventoryLevel()
       expect(Number(level.reserved_quantity)).toBe(0)
+    })
+
+    it("releases every vial from a partially linked canceled order and ignores a delayed placed event", async () => {
+      const container = getContainer()
+      const stock: DecantStockModuleService =
+        container.resolve(DECANT_STOCK_MODULE)
+      const cartId = "partially-linked-cancel-cart"
+      const orderId = "partially-linked-cancel-order"
+      const ids = await reserveDecantSource(
+        container,
+        cartId,
+        makeRequest(fixture, 2),
+      )
+      await stock.updateDecantAllocations({ id: ids[0], order_id: orderId })
+      const query = {
+        graph: jest.fn(async ({ entity }: { entity: string }) => ({
+          data:
+            entity === "order"
+              ? [{ id: orderId, status: "canceled", canceled_at: new Date() }]
+              : [{ cart_id: cartId }],
+        })),
+      }
+      const scopedContainer = createScopedContainer(
+        container,
+        new Map<string, unknown>([[ContainerRegistrationKeys.QUERY, query]]),
+      )
+      const event = {
+        event: {
+          name: "order.canceled",
+          eventName: "order.canceled",
+          data: { id: orderId },
+        },
+        container: scopedContainer,
+        pluginOptions: {},
+      }
+      await releaseDecantsOnOrderCanceled(event)
+      await linkDecantsToOrder({
+        ...event,
+        event: {
+          ...event.event,
+          name: "order.placed",
+        },
+      })
+      const allocations = await stock.listDecantAllocations({
+        cart_id: cartId,
+      })
+      expect(
+        allocations.every((allocation) => allocation.status === "released"),
+      ).toBe(true)
+      expect(
+        allocations.find((allocation) => allocation.id === ids[1])?.order_id,
+      ).toBeNull()
+      expect(Number((await getInventoryLevel()).reserved_quantity)).toBe(0)
+    })
+
+    it("restores inventory and all vial statuses if cancellation cleanup fails, then retries safely", async () => {
+      const container = getContainer()
+      const stock: DecantStockModuleService =
+        container.resolve(DECANT_STOCK_MODULE)
+      const cartId = "release-rollback-cart"
+      const orderId = "release-rollback-order"
+      await reserveDecantSource(container, cartId, makeRequest(fixture, 2))
+      const query = {
+        graph: jest.fn(async ({ entity }: { entity: string }) => ({
+          data:
+            entity === "order"
+              ? [{ id: orderId, status: "canceled", canceled_at: new Date() }]
+              : [{ cart_id: cartId }],
+        })),
+      }
+      const scopedContainer = createScopedContainer(
+        container,
+        new Map<string, unknown>([[ContainerRegistrationKeys.QUERY, query]]),
+      )
+      const event = {
+        event: {
+          name: "order.canceled",
+          eventName: "order.canceled",
+          data: { id: orderId },
+        },
+        container: scopedContainer,
+        pluginOptions: {},
+      }
+      const failingUpdate = jest
+        .spyOn(stock, "updateDecantPlannedBottles")
+        .mockRejectedValueOnce(new Error("Test-only release cleanup failure"))
+      try {
+        await expect(
+          releaseDecantsOnOrderCanceled(event),
+        ).rejects.toMatchObject({
+          message: "Test-only release cleanup failure",
+        })
+      } finally {
+        failingUpdate.mockRestore()
+      }
+      const beforeRetry = await stock.listDecantAllocations({
+        cart_id: cartId,
+      })
+      expect(
+        beforeRetry.every((allocation) => allocation.status === "reserved"),
+      ).toBe(true)
+      expect(Number((await getInventoryLevel()).reserved_quantity)).toBe(1)
+      const plans = await stock.listDecantPlannedBottles({
+        source_product_id: fixture.sourceProductId,
+      })
+      expect(plans[0].status).toBe("planned")
+      await releaseDecantsOnOrderCanceled(event)
+      expect(
+        (await stock.listDecantAllocations({ cart_id: cartId })).every(
+          (allocation) => allocation.status === "released",
+        ),
+      ).toBe(true)
+      expect(Number((await getInventoryLevel()).reserved_quantity)).toBe(0)
+    })
+
+    it("shows not-yet-linked vials in the admin order read without mutating them", async () => {
+      const container = getContainer()
+      const order = await container.resolve(Modules.ORDER).createOrders({
+        currency_code: "eur",
+        status: "pending",
+      })
+      const stock: DecantStockModuleService =
+        container.resolve(DECANT_STOCK_MODULE)
+      const cartId = "read-only-order-cart"
+      const ids = await reserveDecantSource(
+        container,
+        cartId,
+        makeRequest(fixture, 2),
+      )
+      const realQuery = container.resolve(ContainerRegistrationKeys.QUERY)
+      const query = {
+        graph: jest.fn(async (input: { entity: string }) =>
+          input.entity === "order_cart"
+            ? { data: [{ cart_id: cartId }] }
+            : realQuery.graph(input as never),
+        ),
+      }
+      const scopedContainer = createScopedContainer(
+        container,
+        new Map<string, unknown>([[ContainerRegistrationKeys.QUERY, query]]),
+      )
+      const json = jest.fn()
+      await getOrderDecants(
+        {
+          scope: scopedContainer,
+          params: { id: order.id },
+        } as unknown as MedusaRequest,
+        { json } as unknown as MedusaResponse,
+      )
+      expect(
+        json.mock.calls[0][0].allocations
+          .map((allocation: { id: string }) => allocation.id)
+          .sort(),
+      ).toEqual(ids.sort())
+      const after = await stock.listDecantAllocations({ cart_id: cartId })
+      expect(after.every((allocation) => allocation.order_id === null)).toBe(
+        true,
+      )
+      expect(
+        after.every((allocation) => allocation.status === "reserved"),
+      ).toBe(true)
     })
 
     it("opens one reserved bottle during preparation and cannot deduct the same vials twice", async () => {

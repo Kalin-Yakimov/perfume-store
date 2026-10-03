@@ -1,6 +1,6 @@
-import { HttpTypes } from "@medusajs/types"
+import type { CustomerSummary } from "@lib/data/customer-types"
 
-const ProfileEmail = ({ customer }: { customer: HttpTypes.StoreCustomer }) => (
+const ProfileEmail = ({ customer }: { customer: CustomerSummary }) => (
   <div className="w-full" data-testid="account-email-editor">
     <p className="text-small-regular uppercase text-ui-fg-base">
       Имейл за вход

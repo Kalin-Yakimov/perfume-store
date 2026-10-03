@@ -7,13 +7,12 @@ import {
   PerfumeFilters,
   PerfumeListingType,
 } from "@lib/util/perfume-filters"
-import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { getAuthHeaders } from "./cookies"
 import { getPublicCacheOptions } from "./cache-policy"
 import { getRegion, retrieveRegion } from "./regions"
-import { getUnavailableProductIds } from "./product-availability"
+import { listCatalogProducts } from "./catalog"
 import { listPerfumeTaxonomies } from "./perfume-taxonomies"
 import { resolveProductTaxonomy } from "@lib/util/product-taxonomy"
 
@@ -108,10 +107,8 @@ export const listProducts = async ({
 }
 
 /**
- * Fetch every page for catalog views that apply perfume-specific metadata
- * filters and sorting in the storefront. Medusa's store endpoint is still
- * paginated, so requesting one large page silently omitted products beyond
- * the first 100.
+ * Explicit full traversal for background/export consumers such as sitemap.
+ * Interactive catalogs use listCatalogProducts, never this full traversal.
  */
 export const listAllProducts = async ({
   queryParams,
@@ -149,8 +146,8 @@ export const listAllProducts = async ({
 }
 
 /**
- * Fetch all catalog pages before filtering and sorting, then return the requested
- * display page. Public product requests follow the shared cache policy.
+ * Compatibility wrapper for collection/designer/note listing pages. Filtering
+ * and pagination are executed by the backend, not against a full product list.
  */
 export const listProductsWithSort = async ({
   page = 1,
@@ -182,41 +179,31 @@ export const listProductsWithSort = async ({
     new Set((optionValueIds || []).filter(Boolean)),
   )
 
-  const products = await listAllProducts({
-    queryParams: {
-      ...queryParams,
-      ...(optionFilters.length ? { option_value_id: optionFilters } : {}),
-    },
+  const asArray = (value?: string | string[]) =>
+    value ? (Array.isArray(value) ? value : [value]) : undefined
+  const safePage = Number.isSafeInteger(page) && page > 0 ? page : 1
+  const result = await listCatalogProducts({
     countryCode,
-  })
-
-  const filteredProducts = filterPerfumeProducts(
-    products,
-    perfumeFilters,
+    page: safePage,
+    limit,
+    sortBy,
+    query: queryParams?.q,
+    filters: perfumeFilters,
     listingType,
-    await listPerfumeTaxonomies(),
-  )
-  const unavailableProductIds = await getUnavailableProductIds(filteredProducts)
-  const unavailableIds = new Set(unavailableProductIds)
-  const sortedByPreference = sortProducts(filteredProducts, sortBy)
-  const sortedProducts = [
-    ...sortedByPreference.filter((product) => !unavailableIds.has(product.id)),
-    ...sortedByPreference.filter((product) => unavailableIds.has(product.id)),
-  ]
-
-  const pageParam = (page - 1) * limit
-
-  const filteredCount = filteredProducts.length
-
-  const nextPage = filteredCount > pageParam + limit ? pageParam + limit : null
-
-  const paginatedProducts = sortedProducts.slice(pageParam, pageParam + limit)
+    optionValueIds: optionFilters.length
+      ? optionFilters
+      : asArray(queryParams?.option_value_id),
+    categoryIds: asArray(queryParams?.category_id),
+    collectionIds: asArray(queryParams?.collection_id),
+    productIds: asArray(queryParams?.id),
+  })
+  const nextPage = result.count > safePage * limit ? safePage + 1 : null
 
   return {
     response: {
-      products: paginatedProducts,
-      count: filteredCount,
-      unavailableProductIds,
+      products: result.products,
+      count: result.count,
+      unavailableProductIds: result.unavailable_product_ids,
     },
     nextPage,
     queryParams,

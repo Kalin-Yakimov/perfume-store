@@ -1,5 +1,14 @@
-import { createStep, createWorkflow, StepResponse, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
-import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
+import {
+  createStep,
+  createWorkflow,
+  StepResponse,
+  WorkflowResponse,
+} from "@medusajs/framework/workflows-sdk"
+import {
+  ContainerRegistrationKeys,
+  MedusaError,
+  Modules,
+} from "@medusajs/framework/utils"
 
 import { DECANT_RESERVE_ML, DECANT_STOCK_MODULE } from "../modules/decant-stock"
 import { decantSourceLock } from "../modules/decant-stock/reservation"
@@ -44,7 +53,12 @@ const openBottleStep = createStep(
         entity: "product_variant",
         filters: { id: input.source_variant_id },
         fields: [
-          "id", "product_id", "title", "sku", "metadata", "manage_inventory",
+          "id",
+          "product_id",
+          "title",
+          "sku",
+          "metadata",
+          "manage_inventory",
           "inventory_items.inventory_item_id",
           "inventory_items.required_quantity",
           "inventory_items.inventory.location_levels.location_id",
@@ -62,16 +76,21 @@ const openBottleStep = createStep(
     const labelledVolume = readBottleVolumeMl(initial)
     if (
       labelledVolume !== input.source_volume_ml ||
-      !labelledVolume || labelledVolume <= DECANT_RESERVE_ML
+      !labelledVolume ||
+      labelledVolume <= DECANT_RESERVE_ML
     ) {
-      throw invalid("Въведеният обем трябва да съвпада с разфасовката на целия парфюм.")
+      throw invalid(
+        "Въведеният обем трябва да съвпада с разфасовката на целия парфюм.",
+      )
     }
     if (
       initial.manage_inventory === false ||
       initial.inventory_items?.length !== 1 ||
       Number(initial.inventory_items[0].required_quantity || 1) !== 1
     ) {
-      throw invalid("Цялата разфасовка трябва да има един складов артикул с количество 1.")
+      throw invalid(
+        "Цялата разфасовка трябва да има един складов артикул с количество 1.",
+      )
     }
 
     const inventoryItemId = initial.inventory_items[0].inventory_item_id
@@ -80,17 +99,42 @@ const openBottleStep = createStep(
       [decantSourceLock(input.source_product_id), inventoryItemId].sort(),
       async () => {
         const current = await loadVariant()
-        const levels = current?.inventory_items?.[0]?.inventory?.location_levels || []
-        const available = levels.find((level) =>
-          Number(level.stocked_quantity) - Number(level.reserved_quantity) >= 1
+        // A product edit may have committed while this operation waited for
+        // the source lock. Never open stock using an outdated bottle volume.
+        if (
+          !current ||
+          current.product_id !== input.source_product_id ||
+          readBottleVolumeMl(current) !== labelledVolume ||
+          current.manage_inventory === false ||
+          current.inventory_items?.length !== 1 ||
+          current.inventory_items[0].inventory_item_id !== inventoryItemId ||
+          Number(current.inventory_items[0].required_quantity || 1) !== 1
+        ) {
+          throw invalid(
+            "Разфасовката беше променена. Обновете страницата и опитайте отново.",
+          )
+        }
+        const levels =
+          current?.inventory_items?.[0]?.inventory?.location_levels || []
+        const available = levels.find(
+          (level) =>
+            Number(level.stocked_quantity) - Number(level.reserved_quantity) >=
+            1,
         )
         if (!available) {
-          throw invalid("Няма свободна запечатана бутилка. Добавете наличност в Inventory.")
+          throw invalid(
+            "Няма свободна запечатана бутилка. Добавете наличност в Inventory.",
+          )
         }
 
         const inventory = container.resolve(Modules.INVENTORY)
-        await inventory.adjustInventory(inventoryItemId, available.location_id, -1)
-        const stock: DecantStockModuleService = container.resolve(DECANT_STOCK_MODULE)
+        await inventory.adjustInventory(
+          inventoryItemId,
+          available.location_id,
+          -1,
+        )
+        const stock: DecantStockModuleService =
+          container.resolve(DECANT_STOCK_MODULE)
         try {
           const bottle = await stock.createDecantBottles({
             source_product_id: input.source_product_id,
@@ -103,16 +147,20 @@ const openBottleStep = createStep(
           })
           return bottle
         } catch (error) {
-          await inventory.adjustInventory(inventoryItemId, available.location_id, 1)
+          await inventory.adjustInventory(
+            inventoryItemId,
+            available.location_id,
+            1,
+          )
           throw error
         }
-      }
+      },
     )
     return new StepResponse(openedBottle)
-  }
+  },
 )
 
 export const openManualDecantBottleWorkflow = createWorkflow(
   "open-manual-decant-bottle",
-  (input: OpenBottleInput) => new WorkflowResponse(openBottleStep(input))
+  (input: OpenBottleInput) => new WorkflowResponse(openBottleStep(input)),
 )
