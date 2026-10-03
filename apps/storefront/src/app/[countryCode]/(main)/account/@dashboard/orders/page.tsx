@@ -3,6 +3,7 @@ import { Metadata } from "next"
 import OrderOverview from "@modules/account/components/order-overview"
 import { notFound } from "next/navigation"
 import { listOrders } from "@lib/data/orders"
+import { retrieveCustomerSummary } from "@lib/data/customer-read"
 import Divider from "@modules/common/components/divider"
 import TransferRequestForm from "@modules/account/components/transfer-request-form"
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 }
 
 export default async function Orders() {
+  if (!(await retrieveCustomerSummary())) return null
   const orders = await listOrders()
 
   if (!orders) {

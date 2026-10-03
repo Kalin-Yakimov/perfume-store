@@ -7,6 +7,7 @@ module.exports = nextJest({ dir: "./" })({
   testEnvironment: "node",
   testMatch: ["<rootDir>/src/**/__tests__/**/*.unit.spec.[jt]s?(x)"],
   clearMocks: true,
+  modulePathIgnorePatterns: ["<rootDir>/.e2e-app/", "<rootDir>/.next-e2e/"],
   moduleNameMapper: {
     "^@lib/(.*)$": "<rootDir>/src/lib/$1",
     "^@modules/(.*)$": "<rootDir>/src/modules/$1",

@@ -16,6 +16,7 @@
     "test:integration:catalog": "npm run test:integration:catalog --workspace=@dtc/backend",
     "test:integration:cache": "node scripts/test-cache-sync.cjs",
     "test:integration:operations": "npm run test:integration:operations --workspace=@dtc/backend",
+    "test:e2e": "node scripts/run-e2e.cjs",
     "typecheck": "npm run typecheck --workspace=@dtc/backend && npm run typecheck --workspace=@dtc/storefront",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
@@ -38,8 +39,7 @@
     "ajv": "^8.13.0"
   },
   "workspaces": [
-    "apps/**",
-    "!apps/backend/.medusa/**"
+    "apps/*"
   ],
   "overrides": {
     "react": "19.0.5",

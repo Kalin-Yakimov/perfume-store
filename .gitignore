@@ -15,6 +15,10 @@ node_modules
 
 # Testing
 coverage
+**/playwright-report/
+**/test-results/
+**/.next-e2e/
+**/.e2e-app/
 
 # Next.js
 **/.next/

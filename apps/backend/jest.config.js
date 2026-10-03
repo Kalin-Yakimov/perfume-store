@@ -28,6 +28,8 @@ if (process.env.TEST_TYPE === "integration:http") {
   module.exports.testMatch = ["**/integration-tests/http/catalog.spec.[jt]s"];
 } else if (process.env.TEST_TYPE === "integration:operations") {
   module.exports.testMatch = ["**/integration-tests/workflows/product-operations.spec.[jt]s"];
+} else if (process.env.TEST_TYPE === "integration:e2e") {
+  module.exports.testMatch = ["**/integration-tests/e2e/*.spec.[jt]s"];
 } else if (process.env.TEST_TYPE === "unit") {
   module.exports.testMatch = ["**/src/**/__tests__/**/*.unit.spec.[jt]s"];
 }

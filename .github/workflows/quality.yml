@@ -5,6 +5,61 @@ on:
   pull_request:
 
 jobs:
+  customer-flows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: medusa_test
+          POSTGRES_PASSWORD: medusa_test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medusa_test -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --engine-strict
+
+      - name: Verify pinned toolchain
+        run: |
+          test "$(node --version)" = "v$(cat .node-version)"
+          test "$(npm --version)" = "$(node -p 'require("./package.json").packageManager.split("@")[1]')"
+
+      - name: Install isolated Chromium and Linux dependencies
+        run: npm exec --workspace=@dtc/storefront -- playwright install --with-deps chromium
+
+      - name: Test real customer journeys with local SMTP and disposable data
+        run: npm run test:e2e
+        env:
+          E2E_DATABASE_URL: postgres://medusa_test:medusa_test@127.0.0.1:5432/postgres
+
+      - name: Upload synthetic browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: customer-flow-diagnostics
+          path: |
+            apps/storefront/playwright-report/
+            apps/storefront/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   checks:
     runs-on: ubuntu-24.04
     steps:

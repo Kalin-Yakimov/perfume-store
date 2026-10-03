@@ -51,4 +51,6 @@ GitHub Actions проверява фиксираните версии на Node.
 
 Поръчки могат да се използват за локално тестване на потока и наличностите. Не свързвайте реални клиенти: куриерските опции/тарифи и плащането са тестови, а реални интеграции и юридическа готовност още няма.
 
-`npm run test:integration:operations` проверява админ product workflows и компенсациите в отделната тестова база. `npm run test:integration:catalog` проверява backend филтрите, pagination и invalidation. `npm run test:integration:cache` изгражда изолирано Next.js приложение и проверява реалното production кеширане/подписано обновяване, без база или потребителски данни. Пълните browser тестове на потребителските потоци остават отделен етап.
+`npm run test:integration:operations` проверява админ product workflows и компенсациите в отделната тестова база. `npm run test:integration:catalog` проверява backend филтрите, pagination и invalidation. `npm run test:integration:cache` изгражда изолирано Next.js приложение и проверява реалното production кеширане/подписано обновяване, без база или потребителски данни.
+
+`npm run test:e2e` изпълнява браузърните потребителски потоци с реален Medusa backend, отделна тестова база и локален SMTP inbox, без реални имейли или плащания. Нужни са инсталиран Playwright Chromium и изричен `E2E_DATABASE_URL` за отделен локален PostgreSQL cluster. Инструкциите, покритието и ограниченията са в [browser тестовете](docs/customer-flow-tests.md). GitHub Actions ги изпълнява в отделен `customer-flows` job.

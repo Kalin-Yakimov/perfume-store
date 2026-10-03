@@ -8,6 +8,7 @@ const allowedTypes = new Set([
   "integration:orders",
   "integration:catalog",
   "integration:operations",
+  "integration:e2e",
 ])
 
 if (!allowedTypes.has(testType)) {
