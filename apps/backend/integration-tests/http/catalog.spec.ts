@@ -11,7 +11,10 @@ import {
   linkProductsToSalesChannelWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
+  updateProductsWorkflow,
 } from "@medusajs/medusa/core-flows"
+import { DECANT_STOCK_MODULE } from "../../src/modules/decant-stock"
+import DecantStockModuleService from "../../src/modules/decant-stock/service"
 import { CATALOG_INDEX_MODULE } from "../../src/modules/catalog-index"
 import CatalogIndexModuleService, {
   type CatalogEntryInput,
@@ -19,6 +22,8 @@ import CatalogIndexModuleService, {
 import { PERFUME_TAXONOMY_MODULE } from "../../src/modules/perfume-taxonomy"
 import PerfumeTaxonomyModuleService from "../../src/modules/perfume-taxonomy/service"
 import { invalidateCatalogWorkflow } from "../../src/workflows/invalidate-catalog"
+import { readFullPerfumeList } from "../../src/lib/full-perfume-list"
+import { readDecantStockProductNames } from "../../src/lib/decant-stock-product-names"
 import {
   prepareCatalogSnapshotWorkflow,
   publishCatalogSnapshotWorkflow,
@@ -278,6 +283,88 @@ medusaIntegrationTestRunner({
 
     afterEach(() => jest.restoreAllMocks())
 
+    it("uses only enabled decant prices for HTTP filtering, facets and returned variants", async () => {
+      const container = getContainer()
+      const source = await container
+        .resolve(Modules.PRODUCT)
+        .retrieveProduct(fixture.pricedId, { relations: ["variants"] })
+      const stock: DecantStockModuleService =
+        container.resolve(DECANT_STOCK_MODULE)
+      await stock.createDecantBottles({
+        source_product_id: source.id,
+        source_variant_id: source.variants[0].id,
+        source_volume_ml: 50,
+        reserve_ml: 5,
+        initial_ml: 45,
+        remaining_ml: 45,
+        status: "active",
+        opened_at: new Date(),
+      })
+      const {
+        result: [decant],
+      } = await createProductsWorkflow(container).run({
+        input: {
+          products: [
+            {
+              title: "Disabled decant price",
+              handle: "disabled-decant-price",
+              status: "published",
+              sales_channels: [{ id: fixture.channelId }],
+              options: [{ title: "Volume", values: ["5 ml", "10 ml"] }],
+              variants: [5, 10].map((volume) => ({
+                title: `${volume} ml`,
+                options: { Volume: `${volume} ml` },
+                manage_inventory: false,
+                prices: [
+                  { amount: volume === 5 ? 3 : 5, currency_code: "eur" },
+                ],
+              })),
+            },
+          ],
+        },
+      })
+      const five = decant.variants.find((item) => item.title === "5 ml")!
+      const ten = decant.variants.find((item) => item.title === "10 ml")!
+      await updateProductsWorkflow(container).run({
+        input: {
+          products: [
+            {
+              id: decant.id,
+              metadata: {
+                listing_type: "decant",
+                catalog_visible: true,
+                decant_enabled: true,
+                decant_source_product_id: source.id,
+                decant_source_variant_id: source.variants[0].id,
+                decant_source_volume_ml: 50,
+                decant_enabled_variant_ids: [ten.id],
+                decant_variant_volumes: { [five.id]: 5, [ten.id]: 10 },
+              },
+            },
+          ],
+        },
+      })
+      expect(
+        (await getCatalog({ q: "disabled-decant-price", max_price: 3 })).count,
+      ).toBe(0)
+      const active = await getCatalog({
+        listing_type: "decant",
+        q: "disabled-decant-price",
+        min_price: 5,
+        max_price: 5,
+        facets: "true",
+      })
+      expect(active.count).toBe(1)
+      expect(active.facets.price_max).toBe(5)
+      expect(active.products[0].variants.map((item) => item.id)).toEqual([
+        ten.id,
+      ])
+      expect(
+        active.products[0].variants[0].calculated_price?.calculated_amount,
+      ).toBe(5)
+      expect(active.unavailable_product_ids).toEqual([])
+    })
+
     it("paginates the entire visible sales-channel catalog beyond 100 products", async () => {
       const first = await getCatalog({ limit: 100 })
       const second = await getCatalog({ limit: 100, offset: 100 })
@@ -292,6 +379,102 @@ medusaIntegrationTestRunner({
       expect([...ids].sort()).toEqual([...fixture.visibleIds].sort())
       for (const id of fixture.excludedIds) expect(ids).not.toContain(id)
       expect((await getCatalog({ offset: 105 })).products).toEqual([])
+    })
+
+    it("paginates and searches full perfume admin lists in the database and resolves later stock names", async () => {
+      const container = getContainer()
+      const first = await readFullPerfumeList(container, {
+        limit: 100,
+        offset: 0,
+      })
+      const last = await readFullPerfumeList(container, {
+        limit: 100,
+        offset: 100,
+      })
+      expect(first.count).toBe(109)
+      expect(last.count).toBe(109)
+      expect(first.products).toHaveLength(100)
+      expect(last.products).toHaveLength(9)
+      expect(
+        new Set([...first.products, ...last.products].map((item) => item.id))
+          .size,
+      ).toBe(109)
+      expect(first.products[0]).not.toHaveProperty("description")
+      const search = await readFullPerfumeList(container, {
+        limit: 20,
+        offset: 0,
+        q: "Second House",
+      })
+      expect(search.products.map((item) => item.id)).toEqual([fixture.freeId])
+      expect(search.count).toBe(1)
+      const exact = await readFullPerfumeList(container, {
+        limit: 20,
+        offset: 0,
+        q: "catalog-batch-100",
+      })
+      expect(exact.count).toBe(1)
+      const names = await readDecantStockProductNames(
+        container,
+        [...first.products, ...last.products].map((item) => item.id),
+      )
+      expect(names).toHaveLength(109)
+      expect(names.find((item) => item.id === last.products[8].id)?.title).toBe(
+        last.products[8].title,
+      )
+    })
+
+    it("keeps legacy full perfume records but excludes decants and unclassified products from admin lists", async () => {
+      const container = getContainer()
+      await createProductsWorkflow(container).run({
+        input: {
+          products: [
+            {
+              title: "Legacy record brand",
+              handle: "legacy-record-brand",
+              metadata: { brand: "Legacy house" },
+            },
+            {
+              title: "Legacy record profile",
+              handle: "legacy-record-profile",
+              metadata: { perfume_profile: {} },
+            },
+            {
+              title: "Legacy record decant",
+              handle: "legacy-record-decant",
+              metadata: { listing_type: "decant", brand: "Legacy house" },
+            },
+            {
+              title: "Legacy record unrelated",
+              handle: "legacy-record-unrelated",
+            },
+          ].map((product) => ({
+            ...product,
+            options: [{ title: "Volume", values: ["100 ml"] }],
+            variants: [
+              {
+                title: "100 ml",
+                options: { Volume: "100 ml" },
+                manage_inventory: false,
+                prices: [{ amount: 10, currency_code: "eur" }],
+              },
+            ],
+          })),
+        },
+      })
+      const data = await readFullPerfumeList(container, {
+        q: "Legacy record",
+        limit: 20,
+        offset: 0,
+      })
+      expect(data.count).toBe(2)
+      expect(data.products.map((item) => item.title)).toEqual([
+        "Legacy record brand",
+        "Legacy record profile",
+      ])
+      const anonymous = await api.get("/admin/full-perfumes", {
+        validateStatus: () => true,
+      })
+      expect(anonymous.status).toBe(401)
     })
 
     it.each(["price_asc", "price_desc", "created_at"])(

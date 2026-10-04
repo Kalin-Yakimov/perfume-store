@@ -2,6 +2,7 @@
 
 import { addToCart } from "@lib/data/cart"
 import { getDecantAvailability } from "@lib/data/decant-stock"
+import { getCustomerVariants } from "@lib/util/customer-variants"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
@@ -75,26 +76,9 @@ export default function ProductActions({
     void refreshDecantAvailability()
   }, [refreshDecantAvailability])
 
-  // A decant can keep its standard 5 ml / 10 ml variants internally while an
-  // admin temporarily turns one of them off. Customers should only see the
-  // enabled variants, without changing the product's underlying setup.
-  const enabledDecantVariantIds = useMemo(
-    () =>
-      Array.isArray(product.metadata?.decant_enabled_variant_ids)
-        ? product.metadata.decant_enabled_variant_ids.filter(
-            (id): id is string => typeof id === "string",
-          )
-        : null,
-    [product.metadata],
-  )
   const availableVariants = useMemo(
-    () =>
-      product.metadata?.listing_type === "decant" && enabledDecantVariantIds
-        ? (product.variants || []).filter((variant) =>
-            enabledDecantVariantIds.includes(variant.id),
-          )
-        : product.variants || [],
-    [enabledDecantVariantIds, product.metadata?.listing_type, product.variants],
+    () => getCustomerVariants(product),
+    [product],
   )
   const productForPurchase = useMemo(
     () => ({ ...product, variants: availableVariants }),
@@ -153,7 +137,8 @@ export default function ProductActions({
   }, [availableVariants, options])
 
   useEffect(() => {
-    if (Object.keys(options).length === 0 && (!selectedVariant || isDecant)) return
+    if (Object.keys(options).length === 0 && (!selectedVariant || isDecant))
+      return
     const params = new URLSearchParams(searchParams.toString())
     const value = isValidVariant ? selectedVariant?.id : null
 
@@ -168,7 +153,15 @@ export default function ProductActions({
     }
 
     router.replace(pathname + "?" + params.toString(), { scroll: false })
-  }, [isDecant, isValidVariant, options, pathname, router, searchParams, selectedVariant])
+  }, [
+    isDecant,
+    isValidVariant,
+    options,
+    pathname,
+    router,
+    searchParams,
+    selectedVariant,
+  ])
 
   // check if the selected variant is in stock
   const inStock = useMemo(() => {
@@ -220,9 +213,10 @@ export default function ProductActions({
     }
     setQuantity((current) => {
       const currentQuantity = Number(current)
-      const nextQuantity = Number.isInteger(currentQuantity) && currentQuantity > 0
-        ? currentQuantity
-        : 1
+      const nextQuantity =
+        Number.isInteger(currentQuantity) && currentQuantity > 0
+          ? currentQuantity
+          : 1
       return String(
         maxQuantity !== null && maxQuantity > 0
           ? Math.min(nextQuantity, maxQuantity)
@@ -315,7 +309,9 @@ export default function ProductActions({
         </div>
 
         {isDecant && stockStatus === "loading" ? (
-          <p className="py-2 text-sm text-[#806e60]">Проверка на наличността…</p>
+          <p className="py-2 text-sm text-[#806e60]">
+            Проверка на наличността…
+          </p>
         ) : (
           <ProductPrice
             product={productForPurchase}

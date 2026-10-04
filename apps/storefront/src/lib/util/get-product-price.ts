@@ -1,6 +1,10 @@
 import { HttpTypes } from "@medusajs/types"
 import { getPercentageDiff } from "./get-percentage-diff"
 import { convertToLocale } from "./money"
+import {
+  getCheapestCustomerVariant,
+  getCustomerVariants,
+} from "./customer-variants"
 
 type VariantWithPrice = HttpTypes.StoreProductVariant & {
   calculated_price?: {
@@ -14,7 +18,10 @@ type VariantWithPrice = HttpTypes.StoreProductVariant & {
 }
 
 export const getPricesForVariant = (variant: VariantWithPrice) => {
-  if (typeof variant?.calculated_price?.calculated_amount !== "number" || !Number.isFinite(variant.calculated_price.calculated_amount)) {
+  if (
+    typeof variant?.calculated_price?.calculated_amount !== "number" ||
+    !Number.isFinite(variant.calculated_price.calculated_amount)
+  ) {
     return null
   }
 
@@ -33,7 +40,7 @@ export const getPricesForVariant = (variant: VariantWithPrice) => {
     price_type: variant.calculated_price.calculated_price.price_list_type,
     percentage_diff: getPercentageDiff(
       variant.calculated_price.original_amount,
-      variant.calculated_price.calculated_amount
+      variant.calculated_price.calculated_amount,
     ),
   }
 }
@@ -54,16 +61,10 @@ export function getProductPrice({
       return null
     }
 
-    const cheapestVariant = (product.variants as VariantWithPrice[])
-      .filter((v) => !!v.calculated_price)
-      .sort((a, b) => {
-        return (
-          (a.calculated_price?.calculated_amount ?? 0) -
-          (b.calculated_price?.calculated_amount ?? 0)
-        )
-      })[0]
-
-    return getPricesForVariant(cheapestVariant)
+    const cheapestVariant = getCheapestCustomerVariant(product)
+    return cheapestVariant
+      ? getPricesForVariant(cheapestVariant as VariantWithPrice)
+      : null
   }
 
   const variantPrice = () => {
@@ -71,8 +72,8 @@ export function getProductPrice({
       return null
     }
 
-    const variant = product.variants?.find(
-      (v) => v.id === variantId || v.sku === variantId
+    const variant = getCustomerVariants(product).find(
+      (v) => v.id === variantId || v.sku === variantId,
     ) as VariantWithPrice | undefined
 
     if (!variant) {

@@ -1,13 +1,31 @@
 import {
   defineMiddlewares,
   validateAndTransformBody,
+  validateAndTransformQuery,
 } from "@medusajs/framework/http"
 import { ValidateDecantStockBodySchema } from "./store/decant-stock/validate/middlewares"
 import { catalogMiddlewares } from "./store/catalog/middlewares"
-import { CreateFullPerfumeBodySchema, UpdateFullPerfumeBodySchema, UpdatePerfumeProfileBodySchema, UpdateDecantSettingsBodySchema } from "./admin/products/validators"
+import { FullPerfumeListQuerySchema } from "./admin/full-perfumes/query-schema"
+import {
+  CreateFullPerfumeBodySchema,
+  UpdateFullPerfumeBodySchema,
+  UpdatePerfumeProfileBodySchema,
+  UpdateDecantSettingsBodySchema,
+} from "./admin/products/validators"
 
 export default defineMiddlewares({
   routes: [
+    {
+      matcher: "/admin/full-perfumes",
+      method: "GET",
+      middlewares: [
+        validateAndTransformQuery(FullPerfumeListQuerySchema, {
+          isList: true,
+          defaults: ["id"],
+          defaultLimit: 20,
+        }),
+      ],
+    },
     {
       matcher: "/admin/full-perfumes",
       method: "POST",

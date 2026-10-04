@@ -1,6 +1,11 @@
 import { clx } from "@modules/common/components/ui"
 
 import { getProductPrice } from "@lib/util/get-product-price"
+import {
+  getCheapestCustomerVariant,
+  getCustomerVariants,
+  getVariantVolumeLabel,
+} from "@lib/util/customer-variants"
 import { HttpTypes } from "@medusajs/types"
 
 export default function ProductPrice({
@@ -20,18 +25,18 @@ export default function ProductPrice({
   })
 
   const selectedPrice = variant ? variantPrice : cheapestPrice
-  const displayVariant = variant || product.variants?.[0]
-  const variantText = `${displayVariant?.title || ""} ${displayVariant?.sku || ""} ${
-    displayVariant?.options?.map((option) => option.value).join(" ") || ""
-  }`
-  const volumeMatch = variantText.match(/(\d+(?:[.,]\d+)?)\s*ml/i)
-  const storedVolume = Number(displayVariant?.metadata?.volume_ml)
-  const volume = Number.isFinite(storedVolume) && storedVolume > 0
-    ? `${storedVolume} мл`
-    : volumeMatch ? `${volumeMatch[1]} мл` : ""
+  const displayVariant =
+    variant ||
+    getCheapestCustomerVariant(product) ||
+    getCustomerVariants(product)[0]
+  const volume = getVariantVolumeLabel(product, displayVariant)
 
-  if (!selectedPrice) {
-    return <div className="block w-32 h-9 bg-gray-100 animate-pulse" />
+  if (!selectedPrice && !unavailable) {
+    return (
+      <p className="text-sm text-[#817a73]">
+        Не е зададена цена за тази разфасовка.
+      </p>
+    )
   }
 
   return (
@@ -44,7 +49,7 @@ export default function ProductPrice({
           <span className="text-sm font-semibold uppercase tracking-[0.1em] text-[#817a73]">
             {unavailableMessage}
           </span>
-        ) : (
+        ) : selectedPrice ? (
           <>
             <span
               className={clx("text-xl-semi", {
@@ -77,7 +82,7 @@ export default function ProductPrice({
               </>
             )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   )

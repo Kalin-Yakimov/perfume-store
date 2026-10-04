@@ -196,7 +196,14 @@ async function runBrowserSuite(backendUrl, publishableKey) {
     await stopChildren()
     if (path.dirname(appDirectory) !== scratchRoot)
       throw new Error("Unsafe E2E cleanup path")
-    await rm(appDirectory, { recursive: true, force: true })
+    // Windows can briefly keep Next's files locked after its process exits.
+    // Retry only this verified scratch directory, never the real storefront.
+    await rm(appDirectory, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 250,
+    })
   }
 }
 

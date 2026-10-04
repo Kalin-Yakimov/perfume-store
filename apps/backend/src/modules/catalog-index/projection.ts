@@ -1,6 +1,7 @@
 import type { HttpTypes } from "@medusajs/framework/types"
 import type { CatalogEntryInput } from "./service"
 import { catalogToken, normalizeCatalogText } from "./filters"
+import { getCustomerVariants } from "../../lib/customer-variants"
 
 export type CatalogTaxonomy = { id: string; kind: string; name: string }
 export type CatalogProduct = Omit<
@@ -137,7 +138,7 @@ export function projectCatalogProduct(
           )
           .map((item) => item.id),
       ]
-  const variants = product.variants || []
+  const variants = getCustomerVariants(product)
   const prices = variants
     .map((variant) => variant.calculated_price?.calculated_amount)
     .filter(

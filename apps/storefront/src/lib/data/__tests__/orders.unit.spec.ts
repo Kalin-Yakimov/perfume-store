@@ -1,12 +1,38 @@
 import { sdk } from "@lib/config"
 import { getAuthHeaders } from "../cookies"
-import { listRecentOrders } from "../orders"
+import { listRecentOrders, listOrdersPage } from "../orders"
 import type { RecentOrder } from "../order-types"
 
 jest.mock("@lib/config", () => ({ sdk: { client: { fetch: jest.fn() } } }))
 jest.mock("../cookies", () => ({ getAuthHeaders: jest.fn() }))
 
 beforeEach(() => jest.resetAllMocks())
+
+it("retains the total count and reads the requested history page without caching", async () => {
+  jest
+    .mocked(getAuthHeaders)
+    .mockResolvedValue({ authorization: "Bearer test" })
+  const response = {
+    orders: [{ id: "older_order" }],
+    count: 11,
+    offset: 10,
+    limit: 10,
+  }
+  jest.mocked(sdk.client.fetch).mockResolvedValue(response)
+  expect(await listOrdersPage(10, 10)).toEqual(response)
+  expect(sdk.client.fetch).toHaveBeenCalledWith(
+    "/store/orders",
+    expect.objectContaining({
+      query: expect.objectContaining({
+        limit: 10,
+        offset: 10,
+        order: "-created_at",
+      }),
+      headers: { authorization: "Bearer test" },
+      cache: "no-store",
+    }),
+  )
+})
 
 it("skips recent order reads when there is no customer session", async () => {
   jest.mocked(getAuthHeaders).mockResolvedValue({})
@@ -22,7 +48,9 @@ it("requests the five newest orders with only the fields shown in the overview",
     total: 49.99,
     currency_code: "eur",
   }
-  jest.mocked(getAuthHeaders).mockResolvedValue({ authorization: "Bearer test" })
+  jest
+    .mocked(getAuthHeaders)
+    .mockResolvedValue({ authorization: "Bearer test" })
   jest.mocked(sdk.client.fetch).mockResolvedValue({ orders: [order] })
   expect(await listRecentOrders()).toEqual([order])
   expect(sdk.client.fetch).toHaveBeenCalledWith("/store/orders", {
@@ -48,7 +76,9 @@ it("bounds the overview and drops relations added by Medusa's order workflow", a
     items: [{ id: "item_1", title: "Perfume" }],
     email: "customer@example.test",
   }))
-  jest.mocked(getAuthHeaders).mockResolvedValue({ authorization: "Bearer test" })
+  jest
+    .mocked(getAuthHeaders)
+    .mockResolvedValue({ authorization: "Bearer test" })
   jest.mocked(sdk.client.fetch).mockResolvedValue({ orders })
   const recent = await listRecentOrders()
   expect(recent).toHaveLength(5)

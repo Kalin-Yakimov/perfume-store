@@ -57,10 +57,10 @@ export const retrieveOrder = async (id: string) => {
     .catch((err) => medusaError(err))
 }
 
-export const listOrders = async (
+export const listOrdersPage = async (
   limit: number = 10,
   offset: number = 0,
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
 ) => {
   const headers = {
     ...(await getAuthHeaders()),
@@ -79,9 +79,15 @@ export const listOrders = async (
       headers,
       cache: "no-store",
     })
-    .then(({ orders }) => orders)
     .catch((err) => medusaError(err))
 }
+
+// Preserve the array contract for callers that do not render a paginator.
+export const listOrders = async (
+  limit = 10,
+  offset = 0,
+  filters?: Record<string, unknown>,
+) => (await listOrdersPage(limit, offset, filters)).orders
 
 export const createTransferRequest = async (
   state: {
@@ -89,7 +95,7 @@ export const createTransferRequest = async (
     error: string | null
     order: HttpTypes.StoreOrder | null
   },
-  formData: FormData
+  formData: FormData,
 ): Promise<{
   success: boolean
   error: string | null
@@ -110,7 +116,7 @@ export const createTransferRequest = async (
       {
         fields: "id, email",
       },
-      headers
+      headers,
     )
     .then(({ order }) => ({ success: true, error: null, order }))
     .catch(() => ({
@@ -128,7 +134,8 @@ export const acceptTransferRequest = async (id: string, token: string) => {
     .then(({ order }) => ({ success: true, error: null, order }))
     .catch(() => ({
       success: false,
-      error: "Прехвърлянето не можа да бъде потвърдено. Проверете линка и опитайте отново.",
+      error:
+        "Прехвърлянето не можа да бъде потвърдено. Проверете линка и опитайте отново.",
       order: null,
     }))
 }
@@ -141,7 +148,8 @@ export const declineTransferRequest = async (id: string, token: string) => {
     .then(({ order }) => ({ success: true, error: null, order }))
     .catch(() => ({
       success: false,
-      error: "Заявката не можа да бъде отказана. Проверете линка и опитайте отново.",
+      error:
+        "Заявката не можа да бъде отказана. Проверете линка и опитайте отново.",
       order: null,
     }))
 }

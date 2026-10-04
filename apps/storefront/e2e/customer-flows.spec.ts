@@ -175,6 +175,32 @@ test("search suggestions show bottle volume/price and sold-out state", async ({
   ).toContainText(/Изчерпан|Няма наличност/)
 })
 
+test("search shows an error instead of empty results and retries the same query", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/parfyumi")
+  const search = page.getByRole("searchbox", { name: "Търси парфюм по име" })
+  const suggestions = search.locator("../..")
+  const failingSearch = async (route: import("@playwright/test").Route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname === "/store/catalog") await route.abort()
+    else await route.fallback()
+  }
+  await context.route("**/store/catalog?*", failingSearch)
+  await search.fill("E2E")
+  await expect(suggestions.getByRole("alert")).toContainText(
+    "Търсенето временно не е достъпно",
+  )
+  await expect(page.getByText("Не открихме парфюм с това име.")).toHaveCount(0)
+  await context.unroute("**/store/catalog?*", failingSearch)
+  await suggestions.getByRole("button", { name: "Опитай отново" }).click()
+  await expect(suggestions.getByRole("alert")).toHaveCount(0)
+  await expect(
+    suggestions.locator('a[href="/products/e2e-amber"]'),
+  ).toBeVisible()
+})
+
 test("guest favorites survive reload and can be removed", async ({ page }) => {
   await page.goto("/parfyumi")
   const amber = card(page, "Amber")

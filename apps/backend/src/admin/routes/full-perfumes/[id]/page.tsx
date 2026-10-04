@@ -1,9 +1,12 @@
 import { toast } from "@medusajs/ui"
-import { useCallback, useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useState } from "react"
 import { useParams } from "react-router-dom"
 
 import PerfumeProfileEditor from "../../../components/perfume-profile-editor"
-import { adminRequest } from "../../../components/perfume-taxonomy-manager"
+import { adminSdk } from "../../../lib/sdk"
+import { isMissingAdminRecord } from "../../../lib/load-error"
+import DataError from "../../../components/data-error"
 import UnifiedDecantsManager from "../../../components/unified-decants-manager"
 import PerfumeForm, { type FullPerfume } from "../perfume-form"
 
@@ -11,42 +14,55 @@ type EditTab = "basic" | "stock" | "profile" | "decants"
 
 const EditFullPerfumePage = () => {
   const { id } = useParams<{ id: string }>()
-  const [product, setProduct] = useState<FullPerfume | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [editedProduct, setProduct] = useState<FullPerfume | null>(null)
   const [activeTab, setActiveTab] = useState<EditTab>("basic")
   const [receivedQuantity, setReceivedQuantity] = useState("")
   const [isReceiving, setIsReceiving] = useState(false)
 
-  const load = useCallback(async () => {
-    if (!id) return
-    setIsLoading(true)
-    try {
-      const result = await adminRequest<{ product: FullPerfume }>(
-        `/admin/full-perfumes/${id}`
-      )
-      setProduct(result.product)
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Парфюмът не се зареди."
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }, [id])
+  const result = useQuery({
+    queryKey: ["full-perfume", id],
+    queryFn: () =>
+      adminSdk.client.fetch<{ product: FullPerfume }>(
+        `/admin/full-perfumes/${id}`,
+      ),
+    enabled: Boolean(id),
+    staleTime: 0,
+    retry: false,
+    // Background refetching would replace an edit form while it is in use.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+  const product =
+    editedProduct?.id === id ? editedProduct : result.data?.product
+  const load = async () => {
+    setProduct(null)
+    await result.refetch()
+  }
 
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  if (isLoading) {
+  if (id && result.isPending) {
     return <p className="text-ui-fg-subtle px-6 py-8 text-sm">Зареждане…</p>
   }
 
-  if (!product) {
+  const notFound = !id || isMissingAdminRecord(result.error)
+  if (result.isError && !notFound) {
+    return (
+      <section className="bg-ui-bg-base rounded-lg border">
+        <DataError
+          title="Парфюмът не се зареди"
+          onRetry={() => void result.refetch()}
+          isRetrying={result.isFetching}
+        />
+      </section>
+    )
+  }
+  if (notFound || !product) {
     return (
       <section className="bg-ui-bg-base rounded-lg border px-6 py-8">
         <h1 className="text-lg font-semibold">Парфюмът не беше намерен</h1>
-        <a href="/app/full-perfumes" className="mt-3 inline-block text-sm underline">
+        <a
+          href="/app/full-perfumes"
+          className="mt-3 inline-block text-sm underline"
+        >
           Към списъка
         </a>
       </section>
@@ -55,21 +71,38 @@ const EditFullPerfumePage = () => {
 
   const isMultiVariant = (product.variants?.length || 0) > 1
   const tabs: { id: EditTab; label: string; description: string }[] = [
-    { id: "basic", label: "Основни данни", description: "Бутилка, цена и видимост" },
-    { id: "stock", label: "Наличност", description: "Получени запечатани бутилки" },
-    { id: "profile", label: "Ароматен профил", description: "Сезони, нотки и акорди" },
-    { id: "decants", label: "Отливки", description: "5 и 10 мл от тази бутилка" },
+    {
+      id: "basic",
+      label: "Основни данни",
+      description: "Бутилка, цена и видимост",
+    },
+    {
+      id: "stock",
+      label: "Наличност",
+      description: "Получени запечатани бутилки",
+    },
+    {
+      id: "profile",
+      label: "Ароматен профил",
+      description: "Сезони, нотки и акорди",
+    },
+    {
+      id: "decants",
+      label: "Отливки",
+      description: "5 и 10 мл от тази бутилка",
+    },
   ]
-  const levels = product.variants?.[0]?.inventory_items?.flatMap(
-    (item) => item.inventory?.location_levels || []
-  ) || []
+  const levels =
+    product.variants?.[0]?.inventory_items?.flatMap(
+      (item) => item.inventory?.location_levels || [],
+    ) || []
   const stockedQuantity = levels.reduce(
     (total, level) => total + level.stocked_quantity,
-    0
+    0,
   )
   const reservedQuantity = levels.reduce(
     (total, level) => total + level.reserved_quantity,
-    0
+    0,
   )
 
   const receiveStock = async () => {
@@ -80,17 +113,18 @@ const EditFullPerfumePage = () => {
     }
     setIsReceiving(true)
     try {
-      await adminRequest(`/admin/full-perfumes/${product.id}/stock`, {
+      await adminSdk.client.fetch(`/admin/full-perfumes/${product.id}/stock`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ received_quantity: quantity }),
+        body: { received_quantity: quantity },
       })
       setReceivedQuantity("")
       toast.success(`${quantity} запечатани бутилки са добавени.`)
       await load()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Наличността не беше обновена."
+        error instanceof Error
+          ? error.message
+          : "Наличността не беше обновена.",
       )
     } finally {
       setIsReceiving(false)
@@ -100,7 +134,10 @@ const EditFullPerfumePage = () => {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <section className="bg-ui-bg-base shadow-elevation-card-rest rounded-lg border px-6 py-5">
-        <a href="/app/full-perfumes" className="text-ui-fg-subtle text-sm underline">
+        <a
+          href="/app/full-perfumes"
+          className="text-ui-fg-subtle text-sm underline"
+        >
           ← Всички парфюми
         </a>
         <h1 className="mt-3 text-xl font-semibold">{product.title}</h1>
@@ -118,7 +155,9 @@ const EditFullPerfumePage = () => {
               onClick={() => setActiveTab(tab.id)}
               aria-current={activeTab === tab.id ? "step" : undefined}
               className={`bg-ui-bg-base px-5 py-4 text-left ${
-                activeTab === tab.id ? "ring-ui-border-interactive ring-inset ring-2" : ""
+                activeTab === tab.id
+                  ? "ring-ui-border-interactive ring-inset ring-2"
+                  : ""
               }`}
             >
               <span className="block text-sm font-semibold">
@@ -150,8 +189,8 @@ const EditFullPerfumePage = () => {
         </section>
       )}
 
-      {activeTab === "basic" && (
-        isMultiVariant ? (
+      {activeTab === "basic" &&
+        (isMultiVariant ? (
           <section className="bg-ui-bg-base shadow-elevation-card-rest rounded-lg border px-6 py-5 text-sm">
             <h2 className="font-semibold">Този запис има няколко разфасовки</h2>
             <p className="text-ui-fg-subtle mt-2">
@@ -167,19 +206,26 @@ const EditFullPerfumePage = () => {
             </a>
           </section>
         ) : (
-          <PerfumeForm key={product.id} product={product} onSaved={setProduct} />
-        )
-      )}
+          <PerfumeForm
+            key={product.id}
+            product={product}
+            onSaved={setProduct}
+          />
+        ))}
 
-      {activeTab === "stock" && (
-        isMultiVariant ? (
+      {activeTab === "stock" &&
+        (isMultiVariant ? (
           <section className="bg-ui-bg-base shadow-elevation-card-rest rounded-lg border px-6 py-5 text-sm">
             <h2 className="font-semibold">Наличност на няколко разфасовки</h2>
             <p className="text-ui-fg-subtle mt-2">
               Този по-стар продукт има няколко варианта. За да не добавим
-              бутилките към грешна разфасовка, използвайте подробната му страница.
+              бутилките към грешна разфасовка, използвайте подробната му
+              страница.
             </p>
-            <a href={`/app/products/${product.id}`} className="text-ui-fg-interactive mt-3 inline-block underline">
+            <a
+              href={`/app/products/${product.id}`}
+              className="text-ui-fg-interactive mt-3 inline-block underline"
+            >
               Отвори вариантите →
             </a>
           </section>
@@ -200,7 +246,9 @@ const EditFullPerfumePage = () => {
               </div>
               <div className="bg-ui-bg-subtle rounded-md border p-4">
                 <p className="text-ui-fg-subtle text-sm">Заделени за поръчки</p>
-                <p className="mt-1 text-2xl font-semibold">{reservedQuantity}</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {reservedQuantity}
+                </p>
               </div>
               <div className="bg-ui-bg-subtle rounded-md border p-4">
                 <p className="text-ui-fg-subtle text-sm">Свободни</p>
@@ -217,7 +265,10 @@ const EditFullPerfumePage = () => {
               </p>
               <div className="mt-4 flex flex-wrap items-end gap-3">
                 <div>
-                  <label htmlFor="received-quantity" className="mb-1.5 block text-sm font-medium">
+                  <label
+                    htmlFor="received-quantity"
+                    className="mb-1.5 block text-sm font-medium"
+                  >
                     Брой нови бутилки
                   </label>
                   <input
@@ -227,7 +278,9 @@ const EditFullPerfumePage = () => {
                     step="1"
                     inputMode="numeric"
                     value={receivedQuantity}
-                    onChange={(event) => setReceivedQuantity(event.target.value)}
+                    onChange={(event) =>
+                      setReceivedQuantity(event.target.value)
+                    }
                     placeholder="Например 10"
                     className="bg-ui-bg-field text-ui-fg-base border-ui-border-base h-9 w-44 rounded-md border px-3 text-sm outline-none"
                   />
@@ -249,8 +302,7 @@ const EditFullPerfumePage = () => {
               </a>
             </div>
           </section>
-        )
-      )}
+        ))}
 
       {activeTab === "profile" && (
         <PerfumeProfileEditor
@@ -263,16 +315,12 @@ const EditFullPerfumePage = () => {
           showCatalogVisibility={false}
           compactForFullPerfume
           onSaved={(saved) =>
-            setProduct((current) =>
-              current
-                ? {
-                    ...current,
-                    title: saved.title,
-                    handle: saved.handle,
-                    metadata: saved.metadata,
-                  }
-                : current
-            )
+            setProduct((current) => ({
+              ...(current || product),
+              title: saved.title,
+              handle: saved.handle,
+              metadata: saved.metadata,
+            }))
           }
         />
       )}

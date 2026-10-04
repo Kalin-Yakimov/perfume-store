@@ -5,6 +5,7 @@ import {
 } from "../../../modules/decant-stock"
 import DecantStockModuleService from "../../../modules/decant-stock/service"
 import { openManualDecantBottleWorkflow } from "../../../workflows/open-manual-decant-bottle"
+import { readDecantStockProductNames } from "../../../lib/decant-stock-product-names"
 
 type OpenBottleBody = {
   source_product_id?: string
@@ -13,19 +14,18 @@ type OpenBottleBody = {
 }
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const service: DecantStockModuleService = req.scope.resolve(
-    DECANT_STOCK_MODULE
-  )
+  const service: DecantStockModuleService =
+    req.scope.resolve(DECANT_STOCK_MODULE)
   const sourceProductId = req.query.source_product_id
   const bottles = await service.listDecantBottles(
     typeof sourceProductId === "string"
       ? { source_product_id: sourceProductId }
-      : {}
+      : {},
   )
   const planned = await service.listDecantPlannedBottles(
     typeof sourceProductId === "string"
       ? { source_product_id: sourceProductId, status: "planned" }
-      : { status: "planned" }
+      : { status: "planned" },
   )
   const plannedIds = planned.map((item) => item.id)
   const bottleIds = bottles.map((item) => item.id)
@@ -40,7 +40,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   for (const allocation of allocations) {
     reservedByPlanned.set(
       allocation.bottle_id,
-      (reservedByPlanned.get(allocation.bottle_id) || 0) + allocation.volume_ml
+      (reservedByPlanned.get(allocation.bottle_id) || 0) + allocation.volume_ml,
     )
   }
   const openAllocations = bottleIds.length
@@ -54,17 +54,24 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   for (const allocation of openAllocations) {
     reservedByOpen.set(
       allocation.bottle_id,
-      (reservedByOpen.get(allocation.bottle_id) || 0) + allocation.volume_ml
+      (reservedByOpen.get(allocation.bottle_id) || 0) + allocation.volume_ml,
     )
   }
 
   res.json({
+    products: await readDecantStockProductNames(
+      req.scope,
+      [...bottles, ...planned].map((item) => item.source_product_id),
+    ),
     bottles: bottles
       .sort((a, b) => b.opened_at.getTime() - a.opened_at.getTime())
       .map((item) => ({
         ...item,
         reserved_ml: reservedByOpen.get(item.id) || 0,
-        free_ml: Math.max(0, item.remaining_ml - (reservedByOpen.get(item.id) || 0)),
+        free_ml: Math.max(
+          0,
+          item.remaining_ml - (reservedByOpen.get(item.id) || 0),
+        ),
       })),
     planned_bottles: planned.map((item) => ({
       id: item.id,
@@ -80,13 +87,17 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
 export async function POST(
   req: MedusaRequest<OpenBottleBody>,
-  res: MedusaResponse
+  res: MedusaResponse,
 ) {
   const sourceProductId = req.body.source_product_id?.trim()
   const sourceVariantId = req.body.source_variant_id?.trim()
   const sourceVolumeMl = Number(req.body.source_volume_ml)
 
-  if (!sourceProductId || !sourceVariantId || !Number.isFinite(sourceVolumeMl)) {
+  if (
+    !sourceProductId ||
+    !sourceVariantId ||
+    !Number.isFinite(sourceVolumeMl)
+  ) {
     res.status(400).json({
       message: "Изберете парфюм, разфасовка и въведете обема на бутилката.",
     })
@@ -100,7 +111,9 @@ export async function POST(
     return
   }
 
-  const { result: bottle } = await openManualDecantBottleWorkflow(req.scope).run({
+  const { result: bottle } = await openManualDecantBottleWorkflow(
+    req.scope,
+  ).run({
     input: {
       source_product_id: sourceProductId,
       source_variant_id: sourceVariantId,

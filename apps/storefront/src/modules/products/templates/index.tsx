@@ -9,6 +9,11 @@ import WishlistButton from "@modules/products/components/wishlist-button"
 import { getPerfumeProfile } from "@modules/products/data/perfume-profiles"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { getProductPrice } from "@lib/util/get-product-price"
+import {
+  getCheapestCustomerVariant,
+  getCustomerVariants,
+  getVariantVolumeLabel,
+} from "@lib/util/customer-variants"
 import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-related-products"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
@@ -48,24 +53,9 @@ const ProductTemplate = async ({
     (typeof metadataBrand === "string" ? metadataBrand : "Parfumerie")
   const description = profile?.tagline || product.description
   const isDecant = product.metadata?.listing_type === "decant"
-  const pricedVariant = product.variants
-    ?.filter((variant) => variant.calculated_price)
-    .sort(
-      (a, b) =>
-        (a.calculated_price?.calculated_amount ?? 0) -
-        (b.calculated_price?.calculated_amount ?? 0),
-    )[0] || product.variants?.[0]
-  const storedVolume = Number(pricedVariant?.metadata?.volume_ml)
-  const optionText = pricedVariant?.options?.map((option) => option.value).join(" ") || ""
-  const volumeMatch = `${pricedVariant?.title || ""} ${optionText}`.match(
-    /(\d+(?:[.,]\d+)?)\s*(?:ml|мл)/i,
-  )
-  const volume =
-    Number.isFinite(storedVolume) && storedVolume > 0
-      ? `${storedVolume} мл`
-      : volumeMatch
-        ? `${volumeMatch[1]} мл`
-        : ""
+  const pricedVariant =
+    getCheapestCustomerVariant(product) || getCustomerVariants(product)[0]
+  const volume = getVariantVolumeLabel(product, pricedVariant)
   const price = getProductPrice({ product }).cheapestPrice?.calculated_price
   const inventoryVariants = product.variants || []
   const availability = isDecant
@@ -125,10 +115,7 @@ const ProductTemplate = async ({
               item={{
                 id: product.id,
                 handle: product.handle ?? product.id,
-                title: formatProductTitle(
-                  product.title,
-                  isDecant,
-                ),
+                title: formatProductTitle(product.title, isDecant),
                 thumbnail: product.thumbnail,
                 brand,
                 concentration: profile?.concentration || "",

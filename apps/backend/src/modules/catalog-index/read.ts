@@ -25,6 +25,7 @@ import { CATALOG_INDEX_MODULE } from "."
 import CatalogIndexModuleService from "./service"
 import { projectCatalogProduct, CatalogProduct } from "./projection"
 import { catalogFilters, catalogOrder } from "./filters"
+import { getCustomerVariants } from "../../lib/customer-variants"
 
 type Request = MedusaStoreRequest & { validatedQuery: CatalogQuery }
 const projectionFields = [
@@ -294,6 +295,8 @@ export async function readCatalog(req: Request) {
     )
   ).filter(visible)
   await wrapProductsWithTaxPrices(req, products)
+  for (const product of products)
+    product.variants = getCustomerVariants(product)
   const byId = new Map(products.map((product) => [product.id, product]))
   const brands = new Map<string, { value: string; label: string }>()
   let maxPrice = 0

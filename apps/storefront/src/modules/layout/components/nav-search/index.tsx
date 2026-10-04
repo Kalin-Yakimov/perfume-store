@@ -6,6 +6,10 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { useParams, useRouter } from "next/navigation"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { convertToLocale } from "@lib/util/money"
+import {
+  getCustomerVariants,
+  getVariantVolumeLabel,
+} from "@lib/util/customer-variants"
 import { getRegion } from "@lib/data/regions"
 import { resolveProductTaxonomy } from "@lib/util/product-taxonomy"
 import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
@@ -19,25 +23,11 @@ type SearchProduct = Pick<
 > & { variants?: SearchVariant[] | null }
 type SearchResult = SearchProduct & { unavailable: boolean }
 
-const variantVolume = (variant: SearchVariant) => {
-  const storedVolume = Number(variant.metadata?.volume_ml)
-  if (Number.isFinite(storedVolume) && storedVolume > 0) {
-    return `${storedVolume} мл`
-  }
-
-  const optionText =
-    variant.options?.map((option) => option.value).join(" ") || ""
-  const match = `${variant.title || ""} ${optionText}`.match(
-    /(\d+(?:[.,]\d+)?)\s*(?:ml|мл)/i,
-  )
-  return match ? `${match[1]} мл` : ""
-}
-
 const variantDetails = (product: SearchProduct, unavailable: boolean) => {
-  const variants = product.variants || []
+  const variants = getCustomerVariants(product)
   const details = variants
     .map((variant) => {
-      const volume = variantVolume(variant)
+      const volume = getVariantVolumeLabel(product, variant)
       const amount = variant.calculated_price?.calculated_amount
       const currency = variant.calculated_price?.currency_code
       const price =
@@ -72,6 +62,8 @@ export default function NavSearch() {
   const [products, setProducts] = useState<SearchResult[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -88,6 +80,8 @@ export default function NavSearch() {
   useEffect(() => {
     const searchTerm = query.trim()
     let active = true
+    const controller = new AbortController()
+    setHasError(false)
 
     if (searchTerm.length < 2) {
       setProducts([])
@@ -98,17 +92,13 @@ export default function NavSearch() {
     }
 
     setIsLoading(true)
+    setIsOpen(true)
 
     const timer = window.setTimeout(async () => {
       try {
         const region = await getRegion(countryCode)
-        if (!region) {
-          if (active) {
-            setProducts([])
-            setIsOpen(true)
-          }
-          return
-        }
+        if (!active) return
+        if (!region) throw new Error("Search region is unavailable")
 
         const response = await sdk.client.fetch<{
           products: HttpTypes.StoreProduct[]
@@ -116,6 +106,7 @@ export default function NavSearch() {
         }>("/store/catalog", {
           query: { q: searchTerm, limit: 6, region_id: region.id },
           cache: "no-store",
+          signal: controller.signal,
         })
 
         const taxonomies = await listPerfumeTaxonomies()
@@ -133,6 +124,7 @@ export default function NavSearch() {
       } catch {
         if (active) {
           setProducts([])
+          setHasError(true)
           setIsOpen(true)
         }
       } finally {
@@ -143,8 +135,9 @@ export default function NavSearch() {
     return () => {
       active = false
       window.clearTimeout(timer)
+      controller.abort()
     }
-  }, [countryCode, query])
+  }, [countryCode, query, retry])
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -195,6 +188,17 @@ export default function NavSearch() {
         <div className="absolute inset-x-0 top-[calc(100%+8px)] z-[70] overflow-hidden border border-[#ded7cf] bg-[#fffdf9] shadow-[0_18px_50px_rgba(45,34,25,0.16)]">
           {isLoading ? (
             <p className="px-5 py-5 text-sm text-[#74695f]">Търсене...</p>
+          ) : hasError ? (
+            <div className="px-5 py-5 text-sm text-[#74695f]" role="alert">
+              <p>Търсенето временно не е достъпно. Опитайте отново.</p>
+              <button
+                type="button"
+                onClick={() => setRetry((value) => value + 1)}
+                className="mt-3 border border-[#211d19] px-4 py-2 text-[#211d19] transition hover:bg-[#f3eee8]"
+              >
+                Опитай отново
+              </button>
+            </div>
           ) : products.length ? (
             <ul>
               {products.map((product) => {

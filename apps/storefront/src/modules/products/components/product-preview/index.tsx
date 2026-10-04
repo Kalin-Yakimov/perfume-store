@@ -1,4 +1,9 @@
 import { getProductPrice } from "@lib/util/get-product-price"
+import {
+  getCheapestCustomerVariant,
+  getCustomerVariants,
+  getVariantVolumeLabel,
+} from "@lib/util/customer-variants"
 import { formatProductTitle } from "@lib/util/format-volume-for-display"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -35,22 +40,6 @@ const genderLabel = (value: unknown) => {
   return ""
 }
 
-const volumeLabel = (
-  product: HttpTypes.StoreProduct,
-  variant = product.variants?.[0],
-) => {
-  const storedVolume = Number(variant?.metadata?.volume_ml)
-  if (Number.isFinite(storedVolume) && storedVolume > 0) {
-    return `${storedVolume} мл`
-  }
-  const optionText =
-    variant?.options?.map((option) => option.value).join(" ") || ""
-  const match = `${variant?.title || ""} ${optionText}`.match(
-    /(\d+(?:[.,]\d+)?)\s*ml/i,
-  )
-  return match ? `${match[1]} мл` : ""
-}
-
 export default async function ProductPreview({
   product,
   isFeatured,
@@ -66,26 +55,11 @@ export default async function ProductPreview({
   priority?: boolean
   region: HttpTypes.StoreRegion
 }) {
-  // const pricedProduct = await listProducts({
-  //   regionId: region.id,
-  //   queryParams: { id: [product.id!] },
-  // }).then(({ response }) => response.products[0])
-
-  // if (!pricedProduct) {
-  //   return null
-  // }
-
   const { cheapestPrice } = getProductPrice({
     product,
   })
   const cardVariant =
-    product.variants
-      ?.filter((variant) => variant.calculated_price)
-      .sort(
-        (a, b) =>
-          (a.calculated_price?.calculated_amount ?? 0) -
-          (b.calculated_price?.calculated_amount ?? 0),
-      )[0] || product.variants?.[0]
+    getCheapestCustomerVariant(product) || getCustomerVariants(product)[0]
   const metadata = product.metadata as Record<string, unknown> | null
   const profile = readProfileMetadata(metadata)
   const brand = typeof metadata?.brand === "string" ? metadata.brand : ""
@@ -98,7 +72,7 @@ export default async function ProductPreview({
     concentrationLabel(profile.concentration) ||
       (metadata?.demo === true ? "Парфюмна вода" : ""),
     genderLabel(profile.gender || metadata?.gender),
-    volumeLabel(product, cardVariant),
+    getVariantVolumeLabel(product, cardVariant),
   ].filter(Boolean)
 
   return (
@@ -127,9 +101,7 @@ export default async function ProductPreview({
               </span>
             )}
           </div>
-          <div
-            className={compact ? "mt-2 min-h-[88px]" : "mt-3 min-h-[104px]"}
-          >
+          <div className={compact ? "mt-2 min-h-[88px]" : "mt-3 min-h-[104px]"}>
             {brand && (
               <p
                 className={`${compact ? "text-xs" : "text-sm"} font-medium leading-5 ${unavailable ? "text-[#8c857e]" : "text-[#665c54]"}`}
@@ -182,7 +154,7 @@ export default async function ProductPreview({
             concentrationLabel(profile.concentration) ||
             (metadata?.demo === true ? "Парфюмна вода" : ""),
           gender: genderLabel(profile.gender || metadata?.gender),
-          volume: volumeLabel(product, cardVariant),
+          volume: getVariantVolumeLabel(product, cardVariant),
           price: cheapestPrice?.calculated_price,
           availability: unavailable ? "unavailable" : "available",
           listingType:
