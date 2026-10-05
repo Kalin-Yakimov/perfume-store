@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 
-import { listLocales } from "@lib/data/locales"
-import { getLocale } from "@lib/data/locale-actions"
-import type { CustomerSummary } from "@lib/data/customer-types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import AccountMenu from "@modules/layout/components/account-menu"
+import AccountMenuServer, {
+  AccountMenuLoading,
+} from "@modules/layout/components/account-menu-server"
 import CartButton from "@modules/layout/components/cart-button"
+import MobileMenu from "@modules/layout/components/mobile-menu"
 import NavSearch from "@modules/layout/components/nav-search"
 import SideMenu from "@modules/layout/components/side-menu"
 import WishlistLink from "@modules/layout/components/wishlist-link"
@@ -17,16 +17,7 @@ const navigationItems = [
   ["Парфюмни нотки", "/parfyumni-notki"],
 ]
 
-export default async function Nav({
-  customer,
-}: {
-  customer: CustomerSummary | null
-}) {
-  const [locales, currentLocale] = await Promise.all([
-    listLocales(),
-    getLocale(),
-  ])
-
+export default function Nav() {
   return (
     <div className="sticky inset-x-0 top-0 z-50">
       <div className="bg-[#28231f] px-4 py-2 text-center text-[9px] font-semibold uppercase tracking-[0.22em] text-[#eee5dc]">
@@ -39,10 +30,11 @@ export default async function Nav({
             <div className="flex min-h-[72px] items-center gap-2 small:gap-4 small:grid small:grid-cols-[190px_minmax(300px,560px)_300px] small:justify-between">
               <div className="flex min-w-0 items-center gap-2 small:gap-4">
                 <div className="h-[72px] small:hidden">
-                  <SideMenu
-                    locales={locales}
-                    currentLocale={currentLocale}
-                  />
+                  <Suspense
+                    fallback={<SideMenu locales={null} currentLocale={null} />}
+                  >
+                    <MobileMenu />
+                  </Suspense>
                 </div>
                 <LocalizedClientLink
                   href="/"
@@ -76,7 +68,9 @@ export default async function Nav({
                 >
                   <CartButton />
                 </Suspense>
-                <AccountMenu customer={customer} />
+                <Suspense fallback={<AccountMenuLoading />}>
+                  <AccountMenuServer />
+                </Suspense>
               </div>
             </div>
 

@@ -7,7 +7,7 @@ const compat = new FlatCompat({
 })
 
 export default [
-  { ignores: ["**/.next/**", "**/.next-e2e/**", "**/.e2e-app/**", "**/test-results/**", "**/playwright-report/**", "**/out/**", "**/build/**", "next-env.d.ts"] },
+  { ignores: ["**/.next/**", "**/.next-preview/**", "**/.next-e2e/**", "**/.e2e-app/**", "**/test-results/**", "**/playwright-report/**", "**/out/**", "**/build/**", "next-env.d.ts"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     files: ["**/*.{js,jsx,ts,tsx}"],

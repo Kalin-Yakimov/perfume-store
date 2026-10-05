@@ -1,4 +1,4 @@
-import { retrieveCart } from "@lib/data/cart"
+import { retrieveCartForRender } from "@lib/data/cart-read"
 import { retrieveCustomer } from "@lib/data/customer"
 import CartTemplate from "@modules/cart/templates"
 import { Metadata } from "next"
@@ -10,9 +10,10 @@ export const metadata: Metadata = {
 }
 
 export default async function Cart() {
-  const cart = await retrieveCart()
-
-  const customer = await retrieveCustomer()
+  const [cart, customer] = await Promise.all([
+    retrieveCartForRender(),
+    retrieveCustomer(),
+  ])
 
   return <CartTemplate cart={cart} customer={customer} />
 }

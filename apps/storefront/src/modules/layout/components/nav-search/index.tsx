@@ -57,6 +57,7 @@ const variantDetails = (product: SearchProduct, unavailable: boolean) => {
 export default function NavSearch() {
   const router = useRouter()
   const { countryCode } = useParams<{ countryCode: string }>()
+  const countryPrefix = countryCode && countryCode !== "bg" ? `/${countryCode}` : ""
   const containerRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState("")
   const [products, setProducts] = useState<SearchResult[]>([])
@@ -109,7 +110,9 @@ export default function NavSearch() {
           signal: controller.signal,
         })
 
-        const taxonomies = await listPerfumeTaxonomies()
+        const taxonomies = response.products.some(
+          (product) => product.metadata?.perfume_profile,
+        ) ? await listPerfumeTaxonomies() : []
         const unavailableIds = new Set(response.unavailable_product_ids)
 
         if (active) {
@@ -149,7 +152,7 @@ export default function NavSearch() {
     }
 
     setIsOpen(false)
-    router.push(`/${countryCode}/parfyumi?q=${encodeURIComponent(searchTerm)}`)
+    router.push(`${countryPrefix}/parfyumi?q=${encodeURIComponent(searchTerm)}`)
   }
 
   return (
@@ -258,7 +261,7 @@ export default function NavSearch() {
                   onClick={() => {
                     setIsOpen(false)
                     router.push(
-                      `/${countryCode}/parfyumi?q=${encodeURIComponent(query.trim())}`,
+                      `${countryPrefix}/parfyumi?q=${encodeURIComponent(query.trim())}`,
                     )
                   }}
                   className="w-full px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-[#66574b] transition hover:bg-[#f4efe9]"

@@ -38,6 +38,12 @@ export default function ProductActions({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const variantIdFromUrl = searchParams.get("v_id")
+  const optionsChangedByUser = useRef(false)
+  const pendingVariantNavigation = useRef<{
+    productId: string
+    variantId: string | null
+  } | null>(null)
 
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [isAdding, setIsAdding] = useState(false)
@@ -85,15 +91,26 @@ export default function ProductActions({
     [product, availableVariants],
   )
 
-  // Decants open with the smallest volume, unless the URL selects a variant.
+  // URL changes restore the selection without navigating again. Defaults stay
+  // local until a customer chooses an option.
   useEffect(() => {
-    if (!availableVariants.length || Object.keys(options).length > 0) return
-    if (!isDecant && availableVariants.length !== 1) return
+    const pending = pendingVariantNavigation.current
+    pendingVariantNavigation.current = null
+    optionsChangedByUser.current = false
+
+    // Keep partially selected options when our own navigation removes v_id.
+    if (
+      pending?.productId === product.id &&
+      pending.variantId === variantIdFromUrl
+    )
+      return
 
     const fromUrl = availableVariants.find(
-      (variant) => variant.id === searchParams.get("v_id"),
+      (variant) => variant.id === variantIdFromUrl,
     )
-    const smallest = [...availableVariants].sort((a, b) => {
+    const defaultVariants =
+      isDecant || availableVariants.length === 1 ? availableVariants : []
+    const smallest = [...defaultVariants].sort((a, b) => {
       const volume = (variant: HttpTypes.StoreProductVariant) => {
         const stored = Number(variant.metadata?.volume_ml)
         if (Number.isFinite(stored) && stored > 0) return stored
@@ -105,8 +122,11 @@ export default function ProductActions({
       }
       return volume(a) - volume(b)
     })[0]
-    setOptions(optionsAsKeymap((fromUrl || smallest).options) ?? {})
-  }, [availableVariants, isDecant, options, searchParams])
+    const nextOptions = optionsAsKeymap((fromUrl || smallest)?.options) ?? {}
+    setOptions((current) =>
+      isEqual(current, nextOptions) ? current : nextOptions,
+    )
+  }, [availableVariants, isDecant, product.id, variantIdFromUrl])
 
   const selectedVariant = useMemo(() => {
     if (!availableVariants.length) {
@@ -121,6 +141,7 @@ export default function ProductActions({
 
   // update the options when a variant is selected
   const setOptionValue = (optionId: string, value: string) => {
+    optionsChangedByUser.current = true
     setAddError("")
     setOptions((prev) => ({
       ...prev,
@@ -137,10 +158,12 @@ export default function ProductActions({
   }, [availableVariants, options])
 
   useEffect(() => {
+    if (!optionsChangedByUser.current) return
+    optionsChangedByUser.current = false
     if (Object.keys(options).length === 0 && (!selectedVariant || isDecant))
       return
     const params = new URLSearchParams(searchParams.toString())
-    const value = isValidVariant ? selectedVariant?.id : null
+    const value = isValidVariant ? (selectedVariant?.id ?? null) : null
 
     if (params.get("v_id") === value) {
       return
@@ -152,12 +175,15 @@ export default function ProductActions({
       params.delete("v_id")
     }
 
-    router.replace(pathname + "?" + params.toString(), { scroll: false })
+    pendingVariantNavigation.current = { productId: product.id, variantId: value }
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }, [
     isDecant,
     isValidVariant,
     options,
     pathname,
+    product.id,
     router,
     searchParams,
     selectedVariant,

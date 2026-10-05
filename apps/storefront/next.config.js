@@ -17,8 +17,14 @@ const MEDUSA_IMAGE_PATH = MEDUSA_IMAGE_ORIGIN.pathname.replace(/\/$/, "")
  */
 const nextConfig = {
   reactStrictMode: true,
-  // Browser tests use their own output so a running local site is untouched.
-  ...(process.env.E2E_RUN === "1" ? { distDir: ".next-e2e" } : {}),
+  experimental: {
+    // Avoid traversing the complete icon barrel during page compilation.
+    optimizePackageImports: ["@medusajs/icons"],
+  },
+  // Local preview and browser tests must not overwrite the development build.
+  ...(process.env.LOCAL_PREVIEW_RUN === "1"
+    ? { distDir: ".next-preview" }
+    : process.env.E2E_RUN === "1" ? { distDir: ".next-e2e" } : {}),
   logging: {
     fetches: {
       // Query strings can contain one-time reset or verification tokens.

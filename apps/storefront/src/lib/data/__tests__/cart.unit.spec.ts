@@ -17,6 +17,7 @@ jest.mock("@lib/config", () => ({
     },
   },
 }))
+jest.mock("server-only", () => ({}))
 jest.mock("../cookies", () => ({
   getAuthHeaders: jest.fn(async () => ({})),
   getCartId: jest.fn(),

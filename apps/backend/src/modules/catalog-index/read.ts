@@ -73,7 +73,12 @@ const pageFields = [
   "variants.calculated_price.*",
 ]
 
-async function readProducts(req: Request, ids: string[], fields: string[]) {
+async function readProducts(
+  req: Request,
+  ids: string[],
+  fields: string[],
+  inventoryMode: "quantity" | "availability" = "quantity",
+) {
   if (!ids.length) return []
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph(
@@ -89,11 +94,75 @@ async function readProducts(req: Request, ids: string[], fields: string[]) {
     { locale: req.locale },
   )
   const products = data as CatalogProduct[]
-  await wrapVariantsWithInventoryQuantityForSalesChannel(
-    req,
-    products.flatMap((product) => product.variants || []),
-  )
+  const inventoryVariants = products
+    .flatMap((product) => product.variants || [])
+    .filter(
+      (variant) =>
+        variant.manage_inventory === true &&
+        (inventoryMode === "quantity" || !variant.allow_backorder),
+    )
+  if (inventoryVariants.length)
+    await wrapVariantsWithInventoryQuantityForSalesChannel(req, inventoryVariants)
   return products
+}
+
+async function readPageProducts(req: Request, ids: string[], channel: string) {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: pageLinks } = ids.length
+    ? await query.graph({
+        entity: "product_sales_channel",
+        fields: ["product_id"],
+        filters: { product_id: ids, sales_channel_id: channel },
+        pagination: { take: ids.length, skip: 0 },
+      })
+    : { data: [] }
+  const products = (
+    await readProducts(
+      req,
+      pageLinks.map((link) => link.product_id as string),
+      pageFields,
+    )
+  ).filter(visible)
+  await wrapProductsWithTaxPrices(req, products)
+  for (const product of products)
+    product.variants = getCustomerVariants(product)
+  return products
+}
+
+async function readCatalogFacets(
+  catalog: CatalogIndexModuleService,
+  contextKey: string,
+  generation: string,
+  input: CatalogQuery,
+) {
+  const brands = new Map<string, { value: string; label: string }>()
+  let maxPrice = 0
+  if (input.facets === "true") {
+    const baseFilters = catalogFilters(contextKey, generation, input, true)
+    for (let skip = 0; ; skip += 100) {
+      const facetRows = await catalog.listCatalogEntries(baseFilters, {
+        select: ["brand_value", "brand_label", "price"],
+        take: 100,
+        skip,
+        order: { product_id: "ASC" },
+      })
+      for (const row of facetRows) {
+        if (row.brand_value && row.brand_label)
+          brands.set(row.brand_value, {
+            value: row.brand_value,
+            label: row.brand_label,
+          })
+        if (row.price !== null) maxPrice = Math.max(maxPrice, row.price)
+      }
+      if (facetRows.length < 100) break
+    }
+  }
+  return {
+    brands: [...brands.values()].sort((a, b) =>
+      a.label.localeCompare(b.label, "bg"),
+    ),
+    price_max: Math.max(5, Math.ceil(maxPrice / 5) * 5),
+  }
 }
 
 const visible = (product: HttpTypes.StoreProduct) =>
@@ -203,7 +272,7 @@ async function ensureSnapshot(
         })
         const ids = links.map((link) => link.product_id as string)
         const products = (
-          await readProducts(req, ids, projectionFields)
+          await readProducts(req, ids, projectionFields, "availability")
         ).filter(visible)
         for (let offset = 0; offset < products.length; offset += 6) {
           entries.push(
@@ -275,56 +344,15 @@ export async function readCatalog(req: Request) {
     take: input.limit,
     order: catalogOrder(input.sort),
   })
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const { data: pageLinks } = rows.length
-    ? await query.graph({
-        entity: "product_sales_channel",
-        fields: ["product_id"],
-        filters: {
-          product_id: rows.map((row) => row.product_id),
-          sales_channel_id: channels[0],
-        },
-        pagination: { take: rows.length, skip: 0 },
-      })
-    : { data: [] }
-  const products = (
-    await readProducts(
+  const [products, facets] = await Promise.all([
+    readPageProducts(
       req,
-      pageLinks.map((link) => link.product_id as string),
-      pageFields,
-    )
-  ).filter(visible)
-  await wrapProductsWithTaxPrices(req, products)
-  for (const product of products)
-    product.variants = getCustomerVariants(product)
+      rows.map((row) => row.product_id),
+      channels[0],
+    ),
+    readCatalogFacets(catalog, contextKey, snapshot.generation, input),
+  ])
   const byId = new Map(products.map((product) => [product.id, product]))
-  const brands = new Map<string, { value: string; label: string }>()
-  let maxPrice = 0
-  if (input.facets === "true") {
-    const baseFilters = catalogFilters(
-      contextKey,
-      snapshot.generation,
-      input,
-      true,
-    )
-    for (let skip = 0; ; skip += 100) {
-      const facetRows = await catalog.listCatalogEntries(baseFilters, {
-        select: ["brand_value", "brand_label", "price"],
-        take: 100,
-        skip,
-        order: { product_id: "ASC" },
-      })
-      for (const row of facetRows) {
-        if (row.brand_value && row.brand_label)
-          brands.set(row.brand_value, {
-            value: row.brand_value,
-            label: row.brand_label,
-          })
-        if (row.price !== null) maxPrice = Math.max(maxPrice, row.price)
-      }
-      if (facetRows.length < 100) break
-    }
-  }
   return {
     products: rows.flatMap((row) =>
       byId.has(row.product_id) ? [byId.get(row.product_id)!] : [],
@@ -335,11 +363,6 @@ export async function readCatalog(req: Request) {
     unavailable_product_ids: rows
       .filter((row) => row.unavailable && byId.has(row.product_id))
       .map((row) => row.product_id),
-    facets: {
-      brands: [...brands.values()].sort((a, b) =>
-        a.label.localeCompare(b.label, "bg"),
-      ),
-      price_max: Math.max(5, Math.ceil(maxPrice / 5) * 5),
-    },
+    facets,
   }
 }

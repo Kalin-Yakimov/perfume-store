@@ -116,14 +116,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const regionMap = await getRegionMap()
-  const countryCode = await getCountryCode(request, regionMap)
-
-  // if the country code is available, use it, otherwise use the default region
-  const country = countryCode || DEFAULT_REGION
   const pathname = request.nextUrl.pathname.replace(/\/+$/, "") || "/"
   const segments = pathname.split("/").filter(Boolean)
   const firstSegment = segments[0]?.toLowerCase()
+  const explicitDefaultRegion = firstSegment === DEFAULT_REGION
+  const otherCountryPrefix = Boolean(
+    firstSegment && /^[a-z]{2}$/.test(firstSegment) && !explicitDefaultRegion,
+  )
+  const geographicCountries = [
+    (request as { cf?: { country?: string } }).cf?.country?.toLowerCase(),
+    request.headers.get("x-vercel-ip-country")?.toLowerCase(),
+  ]
+  const needsRegionLookup =
+    !explicitDefaultRegion &&
+    (otherCountryPrefix ||
+      geographicCountries.some((code) => code && code !== DEFAULT_REGION))
+
+  // Canonical Bulgarian URLs already identify this store's default region.
+  // The page validates its actual region and prices; routing only needs the
+  // country key. Keep API discovery for other country prefixes/geolocation.
+  const regionMap = needsRegionLookup
+    ? await getRegionMap()
+    : new Map<string, HttpTypes.StoreRegion | number>([[DEFAULT_REGION, 1]])
+  const country = (await getCountryCode(request, regionMap)) || DEFAULT_REGION
   const hasCountryPrefix = Boolean(firstSegment && regionMap.has(firstSegment))
   const routeOffset = hasCountryPrefix ? 1 : 0
   const legacyPathAliases: Record<string, string> = {
@@ -180,13 +195,14 @@ export async function middleware(request: NextRequest) {
 
   const pathChanged = canonicalSegments.some((segment, index) => segment !== segments[index])
   const publicPath = `/${canonicalSegments.slice(routeOffset).join("/")}`
-  const prefixedPublicPath = `/${country}${publicPath}`
+  const canonicalPublicPath = publicPath === "/" ? "/parfyumi" : publicPath
+  const prefixedPublicPath = `/${country}${canonicalPublicPath}`
   const shouldStripDefaultPrefix = hasCountryPrefix && firstSegment === DEFAULT_REGION
 
   // Redirect legacy English paths and explicit /bg URLs to a single public
   // Bulgarian-transliterated URL. Non-default regions keep their country code.
   if (pathChanged || shouldStripDefaultPrefix) {
-    const targetPath = country === DEFAULT_REGION ? publicPath : prefixedPublicPath
+    const targetPath = country === DEFAULT_REGION ? canonicalPublicPath : prefixedPublicPath
     return NextResponse.redirect(
       new URL(`${targetPath}${request.nextUrl.search}`, request.url),
       307,

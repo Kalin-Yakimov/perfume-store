@@ -9,6 +9,7 @@ import { getAuthHeaders, getCartId, removeCartId, setCartId } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { listCartShippingMethods } from "./fulfillment"
+import { DEFAULT_CART_FIELDS, readCart } from "./cart-read"
 import {
   DeliveryPoint,
   getDeliveryCarrier,
@@ -20,36 +21,17 @@ import {
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to retrieve.
  * @returns The cart object if found, or null if not found.
+ * Always reads fresh data for server actions. Render consumers should use
+ * retrieveCartForRender from cart-read to share reads within one render.
  */
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
-  fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, +metadata"
-
   if (!id) {
     return null
   }
 
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
-
-  return await sdk.client
-    .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${id}`, {
-      method: "GET",
-      query: {
-        fields,
-      },
-      headers,
-      // A cart can contain names, addresses, contact details, and user-specific
-      // prices. Never persist it in Next.js' shared data cache.
-      cache: "no-store",
-    })
-    .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
-    .catch((error) => {
-      if (getMedusaErrorStatus(error) === 404) return null
-      return medusaError(error)
-    })
+  const { authorization } = await getAuthHeaders()
+  return readCart(id, fields ?? DEFAULT_CART_FIELDS, authorization)
 }
 
 export async function getOrSetCart(countryCode: string) {
@@ -530,15 +512,15 @@ export async function updateRegion(countryCode: string, currentPath: string) {
   redirect(`/${countryCode}${currentPath}`)
 }
 
-export async function listCartOptions() {
-  const cartId = await getCartId()
+export async function listCartOptions(cartId?: string) {
+  const id = cartId || (await getCartId())
   const headers = {
     ...(await getAuthHeaders()),
   }
   return await sdk.client.fetch<{
     shipping_options: HttpTypes.StoreCartShippingOption[]
   }>("/store/shipping-options", {
-    query: { cart_id: cartId },
+    query: { cart_id: id },
     headers,
     // Shipping options may depend on the current cart and are editable in
     // Medusa Admin; re-fetch them rather than keeping stale rates.

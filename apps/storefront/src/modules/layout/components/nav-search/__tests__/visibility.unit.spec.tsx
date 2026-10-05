@@ -9,7 +9,10 @@ import {
 } from "@testing-library/react"
 import { sdk } from "@lib/config"
 import { getDecantCatalogAvailability } from "@lib/data/decant-stock"
+import { listPerfumeTaxonomies } from "@lib/data/perfume-taxonomies"
 import NavSearch from ".."
+
+const mockPush = jest.fn()
 
 jest.mock("@lib/config", () => ({
   sdk: { client: { fetch: jest.fn() } },
@@ -25,7 +28,7 @@ jest.mock("@lib/data/perfume-taxonomies", () => ({
 }))
 jest.mock("next/navigation", () => ({
   useParams: () => ({ countryCode: "bg" }),
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }))
 jest.mock("@modules/common/components/localized-client-link", () => ({
   __esModule: true,
@@ -127,6 +130,16 @@ describe("catalog search results", () => {
       signal: expect.any(AbortSignal),
     })
     expect(getDecantCatalogAvailability).not.toHaveBeenCalled()
+    expect(listPerfumeTaxonomies).not.toHaveBeenCalled()
+  })
+
+  it("submits directly to the canonical Bulgarian search URL", async () => {
+    render(<NavSearch />)
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: " Armaf " },
+    })
+    fireEvent.submit(screen.getByRole("search"))
+    expect(mockPush).toHaveBeenCalledWith("/parfyumi?q=Armaf")
   })
 
   it("keeps sorted milliliter and direct calculated-price details for available products", async () => {
